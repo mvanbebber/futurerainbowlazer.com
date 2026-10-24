@@ -1,0 +1,42 @@
+name: SlowDown build
+
+on:
+  push:
+    paths:
+      - "SlowDown/**"
+      - ".github/workflows/slowdown-build.yml"
+  pull_request:
+    paths:
+      - "SlowDown/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: SlowDown-macOS
+            destination: generic/platform=macOS
+          - scheme: SlowDown-iOS
+            destination: generic/platform=iOS Simulator
+    defaults:
+      run:
+        working-directory: SlowDown
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build ${{ matrix.scheme }}
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SlowDown.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
