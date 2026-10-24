@@ -11,7 +11,7 @@ struct EQPanel: View {
                     ForEach(EQBand.presets, id: \.name) { preset in
                         Button(preset.name) { controller.applyEQPreset(preset.gains) }
                             .buttonStyle(.bordered)
-                            .tint(isActive(preset.gains) ? .accentColor : .gray)
+                            .tint(isActive(preset.gains) ? Color.accentColor : Color.gray)
                     }
                 }
             }

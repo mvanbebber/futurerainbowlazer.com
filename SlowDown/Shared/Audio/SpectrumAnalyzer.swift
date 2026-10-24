@@ -18,7 +18,8 @@ actor SpectrumAnalyzer {
     private let buffer: AVAudioPCMBuffer
 
     init(url: URL) throws {
-        file = try AVAudioFile(forReading: url)
+        let file = try AVAudioFile(forReading: url)
+        self.file = file
         guard let fft = vDSP.FFT(log2n: 15, radix: .radix2, ofType: DSPSplitComplex.self),
               let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(32_768))
         else { throw AudioImporter.ImportError.unreadable }

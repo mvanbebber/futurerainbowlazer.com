@@ -39,7 +39,6 @@ targets:
         CFBundleDisplayName: SlowDown
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
-        UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: false
         UIApplicationSupportsIndirectInputEvents: true
         UISupportedInterfaceOrientations:

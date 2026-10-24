@@ -19,10 +19,10 @@ struct SpeedPitchPanel: View {
                 }
                 HStack {
                     Button("Slower", systemImage: "minus") { controller.speed -= 0.05 }
-                        .keyboardShortcut("[", modifiers: [])
+                        .playerShortcut("[", enabled: !controller.isEditingText)
                     Slider(value: $controller.speed, in: PlayerController.speedRange, step: 0.01)
                     Button("Faster", systemImage: "plus") { controller.speed += 0.05 }
-                        .keyboardShortcut("]", modifiers: [])
+                        .playerShortcut("]", enabled: !controller.isEditingText)
                 }
                 .labelStyle(.iconOnly)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -30,7 +30,7 @@ struct SpeedPitchPanel: View {
                         ForEach(speedPresets, id: \.self) { preset in
                             Button("\(Int(preset * 100))%") { controller.speed = preset }
                                 .buttonStyle(.bordered)
-                                .tint(abs(controller.speed - preset) < 0.001 ? .accentColor : .gray)
+                                .tint(abs(controller.speed - preset) < 0.001 ? Color.accentColor : Color.gray)
                         }
                     }
                 }
@@ -49,7 +49,8 @@ struct SpeedPitchPanel: View {
                 }
                 HStack(spacing: 16) {
                     Stepper(value: $controller.semitones, in: PlayerController.semitoneRange) {
-                        Text("Semitones \(controller.semitones, format: .number.sign(strategy: .always(includingZero: false)))")
+                        Text("\(controller.semitones, format: .number.sign(strategy: .always(includingZero: false))) st")
+                            .monospacedDigit()
                     }
                     .fixedSize()
                     Button("−12") { controller.semitones -= 12 }
@@ -91,6 +92,7 @@ struct SpeedPitchPanel: View {
                 Picker("Channels", selection: $controller.channelMode) {
                     ForEach(ChannelMode.allCases) { Text($0.title).tag($0) }
                 }
+                .labelsHidden()
                 .fixedSize()
                 .disabled(controller.engine.channelCount < 2)
             }
@@ -105,8 +107,8 @@ struct SpeedPitchPanel: View {
         let semis = controller.semitones
         let cents = Int(controller.cents)
         var parts: [String] = []
-        if semis != 0 { parts.append(String(format: "%+d st", semis)) }
-        if cents != 0 { parts.append(String(format: "%+d ¢", cents)) }
+        if semis != 0 { parts.append(String(format: "%+ld st", semis)) }
+        if cents != 0 { parts.append(String(format: "%+ld ¢", cents)) }
         return parts.joined(separator: " ")
     }
 }

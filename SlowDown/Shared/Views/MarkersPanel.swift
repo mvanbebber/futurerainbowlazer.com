@@ -36,17 +36,19 @@ private struct MarkerRow: View {
     let controller: PlayerController
     let marker: Marker
     @State private var label = ""
+    @FocusState private var editing: Bool
 
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: marker.kind.symbolName)
-                .foregroundStyle(marker.kind == .section ? .orange : .secondary)
+                .foregroundStyle(marker.kind == .section ? Color.orange : Color.secondary)
                 .frame(width: 20)
             Button(marker.time.preciseClock) { controller.seek(to: marker.time) }
                 .font(.system(.body, design: .monospaced))
                 .buttonStyle(.borderless)
             TextField(controller.label(for: marker), text: $label)
                 .textFieldStyle(.plain)
+                .focused($editing)
                 .onSubmit { controller.renameMarker(marker.id, to: label) }
                 .onAppear { label = marker.label }
             Spacer(minLength: 0)
@@ -62,6 +64,7 @@ private struct MarkerRow: View {
             .fixedSize()
         }
         .padding(.vertical, 6)
+        .onChange(of: editing) { _, isEditing in controller.isEditingText = isEditing }
         .onChange(of: label) { _, newValue in
             if newValue != marker.label { controller.renameMarker(marker.id, to: newValue) }
         }

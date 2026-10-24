@@ -4,6 +4,7 @@ import SwiftUI
 struct LoopsPanel: View {
     let controller: PlayerController
     @State private var newName = ""
+    @FocusState private var editingName: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -15,6 +16,7 @@ struct LoopsPanel: View {
                 HStack {
                     TextField("Loop name", text: $newName)
                         .textFieldStyle(.roundedBorder)
+                        .focused($editingName)
                         .onSubmit(save)
                     Button("Save Loop", systemImage: "plus", action: save)
                         .buttonStyle(.borderedProminent)
@@ -52,9 +54,11 @@ struct LoopsPanel: View {
                 }
             }
         }
+        .onChange(of: editingName) { _, isEditing in controller.isEditingText = isEditing }
     }
 
     private func save() {
+        editingName = false
         controller.saveCurrentLoop(named: newName)
         newName = ""
     }

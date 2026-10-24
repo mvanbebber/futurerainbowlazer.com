@@ -25,7 +25,7 @@ struct WaveformView: View {
             loop: loopRange,
             loopEnabled: controller.loopActive,
             selection: selection,
-            markers: controller.recording.markers.map { ($0.time, $0.kind, controller.label(for: $0)) })
+            markers: controller.recording.markers.map { (time: $0.time, kind: $0.kind, label: controller.label(for: $0)) })
 
         VStack(spacing: 6) {
             GeometryReader { geo in
@@ -218,7 +218,7 @@ private struct WaveformSnapshot {
             context.fill(Path(CGRect(x: mx - lineWidth / 2, y: 0, width: lineWidth, height: size.height)), with: .color(color))
             if !marker.label.isEmpty {
                 let text = Text(marker.label)
-                    .font(marker.kind == .section ? .caption.bold() : .caption2)
+                    .font(marker.kind == .section ? Font.caption.bold() : Font.caption2)
                     .foregroundStyle(color)
                 context.draw(text, at: CGPoint(x: mx + 3, y: marker.kind == .section ? 3 : 18), anchor: .topLeading)
             }

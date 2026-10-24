@@ -11,6 +11,8 @@ final class PlayerController {
     private(set) var waveform: WaveformData?
     private(set) var isLoaded = false
     var errorMessage: String?
+    /// True while a marker or loop name is being typed; single-key shortcuts are paused.
+    var isEditingText = false
 
     @ObservationIgnored private let library: Library
     @ObservationIgnored private var saveTask: Task<Void, Never>?

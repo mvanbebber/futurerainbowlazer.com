@@ -259,7 +259,7 @@ final class PlaybackEngine {
 
     private func discardScheduledAudio() {
         generation += 1
-        player.stop()
+        if file != nil { player.stop() }
         segments.removeAll()
         scheduledFrames = 0
     }
