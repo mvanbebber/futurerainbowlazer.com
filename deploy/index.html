@@ -125,6 +125,7 @@
   .num-edit { position: fixed; z-index: 50; border: 2px solid var(--focus); border-radius: 14px; background: #fff; color: var(--ink);
     text-align: center; font: 15px var(--ui); font-variant-numeric: tabular-nums; padding: 0 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
   .mini.acc { font-size: 17px; font-weight: 500; min-width: 34px; }
+  .pill.off { opacity: 0.45; }
   .pill.orig { color: #fff; background: #2e9d48; border-color: #23803a; font-weight: 700; }
   .transport { display: flex; gap: 10px; align-items: center; }
   .round { width: 46px; height: 46px; border-radius: 50%; border: 1px solid #8a8a8a; display: grid; place-items: center; cursor: pointer;
@@ -2088,6 +2089,8 @@ function renderSpeedPitch() {
 function renderLoop() {
   const l = S().loop, has = l.a != null && l.b != null;
   $('#loopStartBox').textContent = has ? clock(l.a) : '–';
+  $('#loopStartBox').classList.toggle('off', has && !l.on);
+  $('#loopEndBox').classList.toggle('off', has && !l.on);
   $('#loopEndBox').textContent = has ? clock(l.b) : '–';
   $('#loopBtn').classList.toggle('on', has && l.on);
   $('#loopBtn').setAttribute('aria-pressed', String(has && l.on));
@@ -2185,13 +2188,14 @@ function drawWave(now) {
   drawLanes(g, W, H, C.wave);
   // The loop (or a drag in progress) shows as a blue band with its own waveform colour, like a selection.
   const l = S().loop;
-  const band = selection || (l.a != null && l.b != null ? [l.a, l.b] : null);
+  // A loop that is switched off is not drawn at all (it comes back when switched on again).
+  const band = selection || (l.on && l.a != null && l.b != null ? [l.a, l.b] : null);
   if (band) {
     const a = Math.max(0, x(band[0])), b = Math.min(W, x(band[1]));
     if (b > a) {
       g.save();
       g.beginPath(); g.rect(a, 0, b - a, H); g.clip();
-      g.fillStyle = selection || l.on ? C['sel-bg'] : C['sel-bg-off']; g.fillRect(a, 0, b - a, H);
+      g.fillStyle = C['sel-bg']; g.fillRect(a, 0, b - a, H);
       drawLanes(g, W, H, C['sel-wave']);
       g.restore();
     }
@@ -3143,7 +3147,7 @@ function wire() {
   // Inside the loop: drag to move it. On an edge: drag to resize it. Elsewhere: drag to make a new loop.
   const loopHit = (clientX, pointerType) => {
     const l = S().loop;
-    if (l.a == null || l.b == null) return null;
+    if (!l.on || l.a == null || l.b == null) return null;
     const r = wave.getBoundingClientRect(), xp = clientX - r.left;
     const xa = ((l.a - view.start) / view.span) * r.width, xb = ((l.b - view.start) / view.span) * r.width;
     // Generous grab zone around each edge (bigger for fingers), but always leave the middle third for moving.
