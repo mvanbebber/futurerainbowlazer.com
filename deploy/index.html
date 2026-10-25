@@ -229,6 +229,7 @@
   .eq-row small { display: block; color: var(--muted); font-family: var(--num); font-size: 11px; }
   .eq-row output { font-family: var(--num); text-align: right; font-variant-numeric: tabular-nums; }
   .note-chip { font-family: var(--num); font-weight: 600; padding: 2px 10px; border-radius: 99px; background: #ffe2c4; border: 1px solid #e9a25b; color: #6b3700; }
+  .soundcheck { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
   .help { color: var(--muted); font-size: 12px; line-height: 1.8; margin: 0; }
   .help kbd { font-family: var(--num); font-size: 11px; border: 1px solid #bbb; border-radius: 3px; padding: 0 4px; background: #fff; color: var(--ink); }
   .radio-list { display: grid; gap: 6px; }
@@ -471,6 +472,15 @@
     </div>
 
     <div class="pbody" data-panel="keys" hidden>
+      <div class="soundcheck">
+        <h4>Sound check</h4>
+        <p class="sub" id="soundStatus">Checking…</p>
+        <div class="row">
+          <button class="btn small" id="beepBtn" type="button">Play test beep</button>
+          <label class="row small" style="gap:6px"><input type="checkbox" id="hqToggle" checked> High-quality engine</label>
+        </div>
+        <p class="hint">No beep: the device is muting the page. Check the ring/silent switch and the volume buttons, and close other apps that are playing sound. Beep works but songs are silent: switch off the high-quality engine and press Play again.</p>
+      </div>
       <p class="hint" id="engineName">Audio engine: starting…</p>
       <p class="help">
         <kbd>Space</kbd> play / pause · <kbd>Enter</kbd> stop and return · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker<br>
@@ -1081,6 +1091,12 @@ class Engine {
     for (const b of this.eq) { node.connect(b); node = b; }
     node.connect(this.gain);
     this.gain.connect(ctx.destination);
+    // iOS can move a running context to "interrupted" (calls, Siri, another app's audio, the media session
+    // switching). Resume it whenever we are meant to be playing.
+    ctx.addEventListener('statechange', () => {
+      if (this.playing && ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {});
+      if (window.updateSoundCheck) window.updateSoundCheck();
+    });
     return ctx;
   }
 
@@ -1104,13 +1120,49 @@ class Engine {
       this.playing = false;
       this.proc.disconnect();
       node.connect(this.eq[0]);
+      // Tap the stretcher's own output so we can tell "the engine is silent" apart from "the device is muted".
+      this.hqProbe = ctx.createAnalyser();
+      this.hqProbe.fftSize = 2048;
+      node.connect(this.hqProbe);
       this.node = node;
+      this.hqSilentChecks = 0;
       if (this.buffer) this.pushBuffers();
       if (wasPlaying) { this.anchor = pos; await this.play(); }
       return true;
     } catch (e) {
       return false;
     }
+  }
+
+  // Switch back to the built-in WSOLA engine, keeping playback going.
+  disableHQ() {
+    if (!this.node) return;
+    const wasPlaying = this.playing, pos = Math.round(this.frameNow());
+    try { this.node.schedule({ active: false }); this.node.disconnect(); } catch (e) { /* already gone */ }
+    this.node = null;
+    this.seg = null;
+    this.proc.connect(this.eq[0]);
+    this.anchor = pos;
+    this.playing = false;
+    if (wasPlaying) { this.reset(pos); this.playing = true; }
+  }
+
+  // Called from the frame loop while playing. If the stretcher produces silence where the song has sound,
+  // for about a second, fall back to the basic engine. Returns true when it switched.
+  checkHQ() {
+    if (!this.node || !this.playing || !this.hqProbe || this.ctx.state !== 'running') { this.hqSilentChecks = 0; return false; }
+    const d = new Float32Array(this.hqProbe.fftSize);
+    this.hqProbe.getFloatTimeDomainData(d);
+    let out = 0;
+    for (const v of d) out = Math.max(out, Math.abs(v));
+    const f = Math.round(this.frameNow()), win = Math.round(this.sr * 0.25);
+    let src = 0;
+    for (let i = Math.max(0, f - win); i < Math.min(this.len, f + win); i += 16) src = Math.max(src, Math.abs(this.search[i]));
+    if (out < 1e-5 && src > 0.02) this.hqSilentChecks++;
+    else this.hqSilentChecks = 0;
+    if (this.hqSilentChecks < 4) return false;
+    this.disableHQ();
+    return true;
   }
 
   pushBuffers() {
@@ -2210,7 +2262,16 @@ function frame(ts) {
       }
       lastNow = now; dirtyWave = false;
     }
-    if (ts - lastNotesTick > 180) { lastNotesTick = ts; updateNotes(now); }
+    if (ts - lastNotesTick > 180) {
+      lastNotesTick = ts;
+      updateNotes(now);
+      if (engine.checkHQ()) {
+        engineNote = 'basic (the high-quality engine produced no sound on this device)';
+        $('#hqToggle').checked = false;
+        updateSoundCheck();
+        toast('Switched to the basic audio engine because the high-quality one was silent on this device.', 5000);
+      }
+    }
     $('#playBtn').classList.toggle('on', engine.playing);
     const s = Math.floor(now);
     if (s !== lastSecond) { lastSecond = s; current.settings.pos = now; }
@@ -2655,6 +2716,37 @@ async function restoreBackup(file) {
   }
 }
 
+// ---------------------------------------------------------------- sound check
+let engineNote = '';
+function updateSoundCheck() {
+  const ctx = engine.ctx;
+  const name = engine.node ? 'Signalsmith Stretch (high quality)' : engineNote || 'basic';
+  $('#engineName').textContent = 'Audio engine: ' + name + '.';
+  const ios = IS_IOS ? (navigator.userAgent.match(/OS (\d+)[._](\d+)/) || []).slice(1, 3).join('.') : '';
+  const bits = [
+    'Audio: ' + (ctx ? ctx.state : 'not started'),
+    ctx ? Math.round(ctx.sampleRate / 100) / 10 + ' kHz' : '',
+    'engine: ' + (engine.node ? 'high quality' : 'basic'),
+    navigator.audioSession ? 'session: ' + navigator.audioSession.type : '',
+    IS_IOS ? 'iOS ' + (ios || '?') : '',
+  ].filter(Boolean);
+  $('#soundStatus').textContent = bits.join(' · ');
+}
+window.updateSoundCheck = updateSoundCheck;
+
+function playBeep() {
+  engine.unlockIOSAudio();
+  const ctx = engine.context();
+  const go = () => {
+    const t = ctx.currentTime + 0.02, o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02); g.gain.setValueAtTime(0.3, t + 0.5); g.gain.linearRampToValueAtTime(0, t + 0.6);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.65);
+    setTimeout(updateSoundCheck, 100);
+  };
+  if (ctx.state !== 'running') ctx.resume().then(go, go); else go();
+}
+
 // ---------------------------------------------------------------- wiring
 function wire() {
   $('#fileInput').addEventListener('change', (e) => { importFiles([...e.target.files]); e.target.value = ''; });
@@ -2670,6 +2762,19 @@ function wire() {
 
   // toolbar
   $('#speedToggle').addEventListener('click', toggleFullSpeed);
+  $('#beepBtn').addEventListener('click', playBeep);
+  $('#hqToggle').addEventListener('change', async (e) => {
+    const on = e.target.checked;
+    try { localStorage.setItem('slowdown.hq', on ? '1' : '0'); } catch (err) { /* storage unavailable */ }
+    if (on && !engine.node) {
+      engineNote = '';
+      if (!(await engine.enableHQ())) { engineNote = 'basic (this browser can’t run the high-quality engine)'; e.target.checked = false; }
+    } else if (!on) {
+      engine.disableHQ();
+      engineNote = 'basic (high quality switched off)';
+    }
+    updateSoundCheck();
+  });
   $('#undoBtn').addEventListener('click', undo);
   $('#redoBtn').addEventListener('click', redo);
   $('#tbBackup').addEventListener('click', backupLibrary);
@@ -3099,11 +3204,18 @@ function wire() {
   $('#waveBusy').hidden = false;
   const ctx = engine.context();
   // The high-quality engine loads alongside; until it is ready the basic engine plays.
-  engine.enableHQ().then((hq) => {
-    $('#engineName').textContent = hq
-      ? 'Audio engine: Signalsmith Stretch (high quality).'
-      : 'Audio engine: basic (this browser can’t run the high-quality engine; try a current Chrome, Edge, Firefox or Safari).';
-  });
+  let hqWanted = true;
+  try { hqWanted = localStorage.getItem('slowdown.hq') !== '0'; } catch (e) { /* storage unavailable */ }
+  $('#hqToggle').checked = hqWanted;
+  if (hqWanted) {
+    engine.enableHQ().then((hq) => {
+      if (!hq) engineNote = 'basic (this browser can’t run the high-quality engine)';
+      updateSoundCheck();
+    });
+  } else {
+    engineNote = 'basic (high quality switched off)';
+  }
+  updateSoundCheck();
   const [example] = await Promise.all([makeExample(ctx.sampleRate), Store.open()]);
   buffers.set('example', example.buffer);
   const stored = (await Store.songs()) || [];
