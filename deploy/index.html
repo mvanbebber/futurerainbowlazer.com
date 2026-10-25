@@ -1806,12 +1806,73 @@ function confirmDelete(li, song) {
   bar.style.gridColumn = '1 / -1';
 }
 
-function decode(arrayBuffer) {
+function decodeNative(arrayBuffer) {
   const ctx = engine.context();
   return new Promise((resolve, reject) => {
     const p = ctx.decodeAudioData(arrayBuffer, resolve, reject);
     if (p && p.then) p.then(resolve, reject);
   });
+}
+
+// FLAC: Safari on iPhone/iPad (and every iOS browser, which all use Safari's engine) can't decode it, so
+// fall back to libFLAC compiled to WebAssembly (wasm-audio-decoders, MIT). It lives in flac-decoder.min.js
+// next to this page and is only loaded when a FLAC file needs it.
+function looksLikeFlac(bytes) {
+  const tag = (i) => String.fromCharCode(bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]);
+  if (bytes.length < 4) return false;
+  if (tag(0) === 'fLaC') return true;
+  if (tag(0).startsWith('ID3') && bytes.length > 10) { // FLAC with a leading ID3 tag
+    const size = ((bytes[6] & 0x7f) << 21) | ((bytes[7] & 0x7f) << 14) | ((bytes[8] & 0x7f) << 7) | (bytes[9] & 0x7f);
+    return bytes.length > size + 14 && tag(size + 10) === 'fLaC';
+  }
+  return false;
+}
+let flacLibrary = null;
+function loadFlacLibrary() {
+  if (window['flac-decoder']) return Promise.resolve(window['flac-decoder']);
+  if (!flacLibrary) {
+    flacLibrary = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'flac-decoder.min.js';
+      script.onload = () => (window['flac-decoder'] ? resolve(window['flac-decoder']) : reject(new Error('FLAC decoder missing')));
+      script.onerror = () => { flacLibrary = null; reject(new Error('The FLAC decoder couldn’t be loaded.')); };
+      document.head.append(script);
+    });
+  }
+  return flacLibrary;
+}
+async function decodeFlac(bytes) {
+  const lib = await loadFlacLibrary();
+  const decoder = new lib.FLACDecoder();
+  try {
+    await decoder.ready;
+    const { channelData, samplesDecoded, sampleRate } = await decoder.decodeFile(bytes);
+    if (!samplesDecoded || !channelData.length) throw new Error('No audio in FLAC file');
+    const channels = channelData.slice(0, 2);
+    const src = new AudioBuffer({ length: samplesDecoded, numberOfChannels: channels.length, sampleRate });
+    channels.forEach((data, c) => src.copyToChannel(data.subarray(0, samplesDecoded), c));
+    // The engine plays buffers at the output rate, so convert other rates (e.g. 96 kHz FLAC) first.
+    const outRate = engine.context().sampleRate;
+    if (sampleRate === outRate) return src;
+    const oc = new OfflineAudioContext(channels.length, Math.ceil((samplesDecoded * outRate) / sampleRate), outRate);
+    const node = oc.createBufferSource();
+    node.buffer = src; node.connect(oc.destination); node.start();
+    return await oc.startRendering();
+  } finally {
+    decoder.free();
+  }
+}
+
+async function decode(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const flac = looksLikeFlac(bytes);
+  // decodeAudioData takes ownership of its buffer, so give it a copy when a FLAC fallback may be needed.
+  try {
+    return await decodeNative(flac ? arrayBuffer.slice(0) : arrayBuffer);
+  } catch (e) {
+    if (!flac) throw e;
+    return decodeFlac(bytes);
+  }
 }
 
 async function importBlob(blob, title, source) {
