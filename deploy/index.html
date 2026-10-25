@@ -108,6 +108,16 @@
   input.pill { text-align: center; font-size: 13px; }
   input.pill::placeholder { color: #9a9a9a; }
   .sp-box { display: flex; justify-content: center; }
+  .times { display: flex; flex-wrap: wrap; gap: 8px; }
+  .times .pill { min-width: 96px; }
+  .prow { display: flex; align-items: center; gap: 5px; }
+  .plabel { width: 64px; font-size: 12px; color: var(--muted); }
+  .prow .pill.small { min-width: 64px; }
+  .mini { min-width: 34px; height: 26px; padding: 0 6px; border-radius: 13px; border: 1px solid #8f8f8f; background: linear-gradient(var(--btn-top), var(--btn-bottom));
+    cursor: pointer; font-weight: 600; font-size: 13px; color: #2a2a2a; font-variant-numeric: tabular-nums; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .mini:hover { background: linear-gradient(#ffffff, #e6e6e6); }
+  .mini:active { background: linear-gradient(var(--btn-on-top), var(--btn-on-bottom)); color: #fff; }
+  .mini.wide { margin-left: 4px; }
   .transport { display: flex; gap: 10px; align-items: center; }
   .round { width: 46px; height: 46px; border-radius: 50%; border: 1px solid #8a8a8a; display: grid; place-items: center; cursor: pointer;
     background: radial-gradient(circle at 50% 30%, #ffffff, #d2d2d2 70%, #bdbdbd); color: #3a3a3a; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
@@ -249,6 +259,8 @@
   <symbol id="i-next" viewBox="0 0 24 24"><path d="M16.5 6H19v12h-2.5zM5 6v12l10-6z" fill="currentColor"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
   <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4l6 6M20 4l-6 6M20 20l-6-6M4 20l6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/></symbol>
+  <symbol id="i-shrink" viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l6 6M21 3l-6 6M21 21l-6-6M3 21l6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M9 3h6v2h5v2H4V5h5zM6 8h12l-1 13H7z" fill="currentColor"/></symbol>
 </svg>
 
@@ -283,7 +295,7 @@
         <button class="tb" type="button" data-open="fx" title="Channels: mono, left, right, karaoke" aria-label="Channels and karaoke">Fx</button>
         <button class="tb" type="button" data-open="markers" title="Markers and saved loops" aria-label="Markers and loops"><svg><use href="#i-markers"/></svg></button>
         <button class="tb" type="button" data-open="eq" title="Equalizer" aria-label="EQ">EQ</button>
-        <button class="tb" type="button" data-open="pitch" title="Transpose, fine tune and notes" aria-label="Pitch">♭♯</button>
+        <button class="tb" type="button" id="viewToggle" title="Bigger waveform (hide the tool panel)" aria-label="Bigger waveform"><svg><use href="#i-expand" id="viewIcon"/></svg></button>
       </div>
       <div class="tg">
         <button class="tb" type="button" data-open="keys" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>
@@ -313,7 +325,11 @@
       </div>
       <div class="cgroup">
         <input class="pill white" id="markerName" placeholder="No marker here" aria-label="Name of the marker at the playhead">
-        <output class="pill yellow" id="now" title="Playhead position">0:00.00</output>
+        <div class="times">
+          <output class="pill yellow" id="now" title="Playhead position">0:00.00</output>
+          <button class="pill pink" type="button" id="loopStartBox" title="Loop start. Click to set it at the playhead (A).">–</button>
+          <button class="pill lavender" type="button" id="loopEndBox" title="Loop end. Click to set it at the playhead (B).">–</button>
+        </div>
       </div>
       <div class="transport">
         <button class="round" type="button" id="playBtn" title="Play (Space)" aria-label="Play"><svg><use href="#i-play"/></svg></button>
@@ -329,12 +345,23 @@
       <div class="cgroup">
         <div class="sp-box"><output class="pill white small" id="speedOut">100%</output></div>
         <div class="srow"><svg><use href="#i-walker"/></svg><input type="range" id="speed" min="-100" max="100" step="1" value="0" list="speedTicks" aria-label="Speed"><datalist id="speedTicks"><option value="0"></option></datalist><svg><use href="#i-runner"/></svg></div>
-        <div class="sp-box"><output class="pill white small" id="pitchOut">0</output></div>
-        <div class="srow"><span class="glyph">♭</span><input type="range" id="semis" min="-24" max="24" step="1" value="0" aria-label="Transpose in semitones"><span class="glyph">♯</span></div>
       </div>
-      <div class="cgroup">
-        <button class="pill pink" type="button" id="loopStartBox" title="Loop start. Click to set it at the playhead (A).">–</button>
-        <button class="pill lavender" type="button" id="loopEndBox" title="Loop end. Click to set it at the playhead (B).">–</button>
+      <div class="cgroup pitch">
+        <div class="prow">
+          <span class="plabel">Transpose</span>
+          <button class="mini" type="button" data-semi="-12" title="Down an octave">−12</button>
+          <button class="mini" type="button" data-semi="-1" title="Down a semitone (hold to repeat)">−1</button>
+          <output class="pill white small" id="pitchOut" title="Transposition in semitones">0 st</output>
+          <button class="mini" type="button" data-semi="1" title="Up a semitone (hold to repeat)">+1</button>
+          <button class="mini" type="button" data-semi="12" title="Up an octave">+12</button>
+        </div>
+        <div class="prow">
+          <span class="plabel">Fine tune</span>
+          <button class="mini" type="button" data-cents="-1" title="Down 1 cent (hold to repeat)">−</button>
+          <output class="pill white small" id="centsOut" title="Fine tuning in cents (100 cents = 1 semitone)">0 ¢</output>
+          <button class="mini" type="button" data-cents="1" title="Up 1 cent (hold to repeat)">+</button>
+          <button class="mini wide" type="button" id="pitchReset" title="Back to the original pitch">Reset</button>
+        </div>
       </div>
     </div>
 
@@ -344,7 +371,7 @@
       <button class="ptab" type="button" role="tab" data-tab="markers">Markers &amp; loops</button>
       <button class="ptab" type="button" role="tab" data-tab="eq">EQ</button>
       <button class="ptab" type="button" role="tab" data-tab="fx">Channels</button>
-      <button class="ptab" type="button" role="tab" data-tab="pitch">Pitch &amp; notes</button>
+      <button class="ptab" type="button" role="tab" data-tab="pitch">Notes</button>
       <button class="ptab" type="button" role="tab" data-tab="keys">Shortcuts</button>
       <button class="ptab close" type="button" id="panelClose" aria-label="Close panel">✕</button>
     </div>
@@ -392,20 +419,7 @@
     </div>
 
     <div class="pbody" data-panel="pitch" hidden>
-      <div class="row">
-        <span class="muted">Transpose</span>
-        <button class="btn small" id="semiDown" type="button">−1 semitone</button>
-        <button class="btn small" id="semiUp" type="button">+1 semitone</button>
-        <button class="btn small" id="octDown" type="button">−12</button>
-        <button class="btn small" id="octUp" type="button">+12</button>
-        <button class="btn small ghost" id="pitchReset" type="button">Reset</button>
-      </div>
-      <div class="row">
-        <label class="muted" for="cents">Fine tune</label>
-        <input type="range" id="cents" min="-50" max="50" step="1" value="0" style="width:220px">
-        <span class="sub" id="centsOut">0 ¢</span>
-        <span class="sub" id="a440">A4 440.0 Hz → 440.0 Hz</span>
-      </div>
+      <p class="sub" id="a440">A4 440.0 Hz → 440.0 Hz</p>
       <div class="row" id="notesNow"><span class="muted">Strongest notes at the playhead</span></div>
       <p class="hint">The keyboard lights up the notes sounding at the playhead, shifted by the transpose setting so they match what you hear. Click a key to hear that note. Pause on a chord to read it.</p>
     </div>
@@ -1789,11 +1803,7 @@ function renderSpeedPitch() {
   $('#speed').value = speedToSlider(st.speed);
   $('#speedOut').textContent = pct + '%';
   document.querySelectorAll('#speedPresets .sp').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === pct));
-  $('#semis').value = st.semis;
-  let p = st.semis ? (st.semis > 0 ? '+' : '−') + Math.abs(st.semis) : '0';
-  if (st.cents) p += ' ' + (st.cents > 0 ? '+' : '−') + Math.abs(st.cents) + '¢';
-  $('#pitchOut').textContent = p;
-  $('#cents').value = st.cents;
+  $('#pitchOut').textContent = (st.semis > 0 ? '+' : st.semis < 0 ? '−' : '') + Math.abs(st.semis) + ' st';
   $('#centsOut').textContent = (st.cents > 0 ? '+' : st.cents < 0 ? '−' : '') + Math.abs(st.cents) + ' ¢';
   $('#a440').textContent = 'A4 440.0 Hz → ' + (440 * Math.pow(2, st.cents / 1200)).toFixed(1) + ' Hz';
   $('#volume').value = Math.round(st.volume * 100);
@@ -1818,12 +1828,21 @@ function showPanel(name) {
   document.querySelectorAll('.ptab[data-tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
   document.querySelectorAll('.tb[data-open]').forEach((b) => b.classList.toggle('on', b.dataset.open === name));
+  syncViewToggle();
   if (name === 'markers') { renderMarkers(); renderLoops(); }
   if (name === 'library') updateStorage();
+}
+function syncViewToggle() {
+  $('#viewIcon').setAttribute('href', panelOpen ? '#i-expand' : '#i-shrink');
+  const label = panelOpen ? 'Bigger waveform (hide the tool panel)' : 'Normal view (show the tool panel)';
+  $('#viewToggle').title = label;
+  $('#viewToggle').setAttribute('aria-label', label);
+  $('#viewToggle').classList.toggle('on', !panelOpen);
 }
 function hidePanel() {
   panelOpen = false;
   $('#panel').hidden = true;
+  syncViewToggle();
   document.querySelectorAll('.tb[data-open]').forEach((b) => b.classList.remove('on'));
 }
 
@@ -2591,12 +2610,30 @@ function wire() {
     $('#waveBusy').hidden = false;
     setTimeout(() => { S().mode = r.value; engine.setMode(S().mode); saveSoon(); $('#waveBusy').hidden = true; lastNotesAt = -1; }, 10);
   }));
-  $('#semiDown').addEventListener('click', () => setPitch(S().semis - 1, S().cents));
-  $('#semiUp').addEventListener('click', () => setPitch(S().semis + 1, S().cents));
-  $('#octDown').addEventListener('click', () => setPitch(S().semis - 12, S().cents));
-  $('#octUp').addEventListener('click', () => setPitch(S().semis + 12, S().cents));
+  // Transpose and fine-tune buttons act on press; the ±1 buttons repeat while held.
+  const holdButton = (btn, act, repeat) => {
+    let timer = 0;
+    const stopHold = () => { clearTimeout(timer); timer = 0; };
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      act();
+      if (!repeat) return;
+      const again = (delay) => { timer = setTimeout(() => { act(); again(70); }, delay); };
+      again(400);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, stopHold));
+    btn.addEventListener('click', (e) => { if (e.detail === 0) act(); }); // keyboard activation
+  };
+  document.querySelectorAll('[data-semi]').forEach((b) => {
+    const d = Number(b.dataset.semi);
+    holdButton(b, () => setPitch(S().semis + d, S().cents), Math.abs(d) === 1);
+  });
+  document.querySelectorAll('[data-cents]').forEach((b) => {
+    const d = Number(b.dataset.cents);
+    holdButton(b, () => setPitch(S().semis, S().cents + d), true);
+  });
   $('#pitchReset').addEventListener('click', () => setPitch(0, 0));
-  $('#cents').addEventListener('input', (e) => setPitch(S().semis, Number(e.target.value)));
+  $('#viewToggle').addEventListener('click', () => { if (panelOpen) hidePanel(); else showPanel(tab || 'library'); });
 
   // control bar
   $('#zoom').addEventListener('input', (e) => {
@@ -2619,7 +2656,6 @@ function wire() {
   $('#prevMarker').addEventListener('click', () => jumpMarker(-1));
   $('#nextMarker').addEventListener('click', () => jumpMarker(1));
   $('#speed').addEventListener('input', (e) => setSpeed(sliderToSpeed(Number(e.target.value))));
-  $('#semis').addEventListener('input', (e) => setPitch(Number(e.target.value), S().cents));
   $('#loopStartBox').addEventListener('click', setA);
   $('#loopEndBox').addEventListener('click', setB);
 
@@ -2830,10 +2866,13 @@ function wire() {
   wire();
   $('#waveBusy').hidden = false;
   const ctx = engine.context();
-  const [example, , hq] = await Promise.all([makeExample(ctx.sampleRate), Store.open(), engine.enableHQ()]);
-  $('#engineName').textContent = hq
-    ? 'Audio engine: Signalsmith Stretch (high quality).'
-    : 'Audio engine: basic (this browser can’t run the high-quality engine; try a current Chrome, Edge, Firefox or Safari).';
+  // The high-quality engine loads alongside; until it is ready the basic engine plays.
+  engine.enableHQ().then((hq) => {
+    $('#engineName').textContent = hq
+      ? 'Audio engine: Signalsmith Stretch (high quality).'
+      : 'Audio engine: basic (this browser can’t run the high-quality engine; try a current Chrome, Edge, Firefox or Safari).';
+  });
+  const [example] = await Promise.all([makeExample(ctx.sampleRate), Store.open()]);
   buffers.set('example', example.buffer);
   const stored = (await Store.songs()) || [];
   stored.sort((a, b) => b.addedAt - a.addedAt);
