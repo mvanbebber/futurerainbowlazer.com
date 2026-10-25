@@ -109,6 +109,11 @@
   .song:hover .del, .song .del:focus-visible { opacity: 1; }
   @media (hover: none) { .song .del { opacity: 1; } }
   .hint { color: var(--muted); font-size: 12px; margin: 4px; }
+  .storage { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px; }
+  .storage-line { margin: 0 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .storage-line strong { color: var(--accent); font-weight: 600; }
+  .storage-line.warn strong { color: var(--amber); }
+  .storage .row { gap: 6px; }
 
   .player { display: grid; gap: 14px; min-width: 0; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); min-width: 0; }
@@ -236,6 +241,14 @@
       <h2>Library</h2>
       <ul class="songs" id="songs"></ul>
       <p class="hint" id="libraryHint">Drop audio or video files anywhere on the page. Songs and their markers are kept in this browser.</p>
+      <div class="storage">
+        <p class="storage-line" id="storageLine">Checking storage…</p>
+        <div class="row">
+          <button class="btn small" id="backupBtn" type="button">Back up library</button>
+          <label class="btn small" for="restoreInput">Restore backup</label>
+          <input id="restoreInput" class="visually-hidden" type="file" accept=".zip,application/zip">
+        </div>
+      </div>
     </aside>
 
     <main class="player" id="player">
@@ -899,6 +912,7 @@ function confirmDelete(li, song) {
     if (current && current.id === song.id) await selectSong(songs[0].id);
     else renderLibrary();
     toast('Removed “' + song.title + '”.');
+    updateStorage();
   });
   no.addEventListener('click', () => bar.remove());
   bar.append(yes, no);
@@ -921,9 +935,11 @@ async function importBlob(blob, title, source) {
     const song = { id: uid(), title, source, addedAt: Date.now(), duration: buffer.duration, settings: defaultSettings(), markers: [], loops: [] };
     buffers.set(song.id, buffer);
     songs.splice(1, 0, song); // just below the example
-    await Store.putAudio(song.id, blob);
+    const stored = await Store.putAudio(song.id, blob);
     await Store.putSong(song);
+    if (Store.db && stored == null) toast('“' + title + '” plays now but couldn’t be saved: this browser is out of storage space for the site. Remove some songs or back up and clear.', 8000);
     await selectSong(song.id);
+    updateStorage();
     return song;
   } catch (e) {
     toast('Couldn’t read “' + title + '”. This browser can’t decode that format. Try Chrome, or convert it to WAV, MP3 or M4A.', 7000);
@@ -934,6 +950,7 @@ async function importBlob(blob, title, source) {
 }
 
 async function importFiles(files) {
+  requestPersistence();
   for (const file of files) {
     const title = file.name.replace(/\.[^.]+$/, '') || 'Untitled';
     await importBlob(file, title, 'file');
@@ -1473,10 +1490,224 @@ async function finishCapture() {
   rec.recorder = null; rec.stream = null; rec.analyser = null;
   if (cancelled) { toast('Recording discarded.'); return; }
   if (!chunks.length) { toast('Nothing was recorded.'); return; }
+  requestPersistence();
   const d = new Date(), pad = (n) => String(n).padStart(2, '0');
   const stamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + '.' + pad(d.getMinutes());
   const song = await importBlob(new Blob(chunks, { type }), (kind === 'tab' ? 'Tab capture ' : 'Mic recording ') + stamp, kind);
   if (song) toast('Added “' + song.title + '”. Rename it above.');
+}
+
+// ---------------------------------------------------------------- storage status, persistence, backup
+const isSafari = /^((?!chrome|chromium|crios|fxios|edg|android).)*safari/i.test(navigator.userAgent) && !navigator.standalone;
+const fmtBytes = (n) => (n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? Math.round(n / 1e6) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
+
+// Asks the browser to exempt this site's data from automatic clean-up. Chrome decides silently; Firefox asks.
+async function requestPersistence() {
+  try {
+    if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist();
+  } catch (e) { /* not supported */ }
+  updateStorage();
+}
+
+async function updateStorage() {
+  const el = $('#storageLine');
+  if (!Store.db) {
+    el.className = 'storage-line warn';
+    el.innerHTML = '<strong>Not saving.</strong> This browser blocks storage here, so imports last until you close the page.';
+    return;
+  }
+  let used = null, quota = null, persisted = false;
+  try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); used = e.usage; quota = e.quota; } } catch (e) { /* unknown */ }
+  try { if (navigator.storage && navigator.storage.persisted) persisted = await navigator.storage.persisted(); } catch (e) { /* unknown */ }
+  const count = songs.filter((s) => s.source !== 'example').length;
+  let line = count + (count === 1 ? ' song' : ' songs');
+  if (used != null) line += ' · ' + fmtBytes(used) + (quota ? ' of ' + fmtBytes(quota) : '') + ' used';
+  let status;
+  if (persisted) status = '<strong>Kept permanently</strong> in this browser.';
+  else if (isSafari) status = '<strong>Safari deletes this after 7 days without a visit.</strong> Back up to keep your songs.';
+  else status = '<strong>May be cleared</strong> if the disk runs low. Back up to be safe.';
+  el.className = 'storage-line' + (persisted ? '' : ' warn');
+  el.innerHTML = line + '<br>' + status;
+}
+
+// Minimal ZIP (stored, no compression) so a backup opens anywhere and audio isn't re-encoded.
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(bytes, crc = 0) {
+  let c = (crc ^ 0xffffffff) >>> 0;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+async function blobCrc(blob) {
+  let crc = 0;
+  const step = 8 << 20;
+  for (let o = 0; o < blob.size; o += step) crc = crc32(new Uint8Array(await blob.slice(o, o + step).arrayBuffer()), crc);
+  return crc;
+}
+
+async function makeZip(entries) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  const d = new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  let offset = 0;
+  for (const e of entries) {
+    const name = enc.encode(e.name), size = e.blob.size, crc = await blobCrc(e.blob);
+    if (offset + 30 + name.length + size > 0xffffffff) throw new Error('The library is over 4 GB. Remove some songs and back up in parts.');
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true); h.setUint32(14, crc, true);
+    h.setUint32(18, size, true); h.setUint32(22, size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, e.blob);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true); c.setUint32(16, crc, true);
+    c.setUint32(20, size, true); c.setUint32(24, size, true); c.setUint16(28, name.length, true);
+    c.setUint32(42, offset, true);
+    central.push(c.buffer, name);
+    offset += 30 + name.length + size;
+  }
+  const cdSize = central.reduce((n, p) => n + p.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+}
+
+// Reads stored entries, and deflated ones too (a backup someone unzipped and re-zipped) where the browser can inflate.
+async function readZip(file) {
+  const tailLen = Math.min(file.size, 65557);
+  const tail = new DataView(await file.slice(file.size - tailLen).arrayBuffer());
+  let eocd = -1;
+  for (let i = tail.byteLength - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('This file isn’t a ZIP backup.');
+  const count = tail.getUint16(eocd + 10, true), cdSize = tail.getUint32(eocd + 12, true), cdOff = tail.getUint32(eocd + 16, true);
+  const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer());
+  const dec = new TextDecoder(), entries = new Map();
+  let p = 0;
+  for (let i = 0; i < count && p + 46 <= cd.byteLength; i++) {
+    if (cd.getUint32(p, true) !== 0x02014b50) break;
+    const nlen = cd.getUint16(p + 28, true), xlen = cd.getUint16(p + 30, true), clen = cd.getUint16(p + 32, true);
+    entries.set(dec.decode(new Uint8Array(cd.buffer, p + 46, nlen)), {
+      method: cd.getUint16(p + 10, true), size: cd.getUint32(p + 20, true), local: cd.getUint32(p + 42, true),
+    });
+    p += 46 + nlen + xlen + clen;
+  }
+  async function get(name) {
+    const e = entries.get(name);
+    if (!e) return null;
+    const lh = new DataView(await file.slice(e.local, e.local + 30).arrayBuffer());
+    const start = e.local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+    const raw = file.slice(start, start + e.size);
+    if (e.method === 0) return raw;
+    if (e.method === 8 && window.DecompressionStream) return new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+    throw new Error('This backup was re-compressed in a way this browser can’t read. Use the original backup file.');
+  }
+  return { get };
+}
+
+const AUDIO_EXT = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav', 'audio/flac': 'flac', 'audio/x-flac': 'flac',
+  'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/webm': 'webm', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' };
+const extFor = (type) => AUDIO_EXT[(type || '').split(';')[0]] || 'audio';
+
+async function saveFile(filename, blob) {
+  let downloads = null;
+  try { if (window.claude && window.claude.use) downloads = await window.claude.use('downloads'); } catch (e) { downloads = null; }
+  if (downloads) {
+    try {
+      await downloads.save({ filename, data: blob });
+      toast('Backup saved: ' + filename);
+    } catch (e) {
+      toast(e && e.code === 'declined' ? 'Backup not saved.' : 'The backup couldn’t be saved here. Open SlowDown from your own site to back up.', 7000);
+    }
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.hidden = true;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast('Backup downloaded: ' + filename + ' (' + fmtBytes(blob.size) + '). Keep it somewhere safe, like iCloud Drive or Dropbox.', 7000);
+}
+
+async function backupLibrary() {
+  const list = songs.filter((s) => s.source !== 'example');
+  if (!list.length) { toast('Nothing to back up yet. Import a song first.'); return; }
+  const btn = $('#backupBtn');
+  btn.disabled = true; btn.textContent = 'Preparing…';
+  try {
+    if (current && current.source !== 'example') { current.settings.pos = engine.currentTime(); await Store.putSong(current); }
+    const manifest = { app: 'SlowDown', version: 1, exportedAt: new Date().toISOString(), songs: [] };
+    const entries = [];
+    for (const song of list) {
+      const blob = await Store.getAudio(song.id);
+      if (!blob) continue;
+      const audioFile = 'audio/' + song.id + '.' + extFor(blob.type);
+      entries.push({ name: audioFile, blob });
+      manifest.songs.push({ ...song, audioFile, audioType: blob.type || '' });
+    }
+    entries.unshift({ name: 'manifest.json', blob: new Blob([JSON.stringify(manifest, null, 1)], { type: 'application/json' }) });
+    const zip = await makeZip(entries);
+    const d = new Date(), pad = (n) => String(n).padStart(2, '0');
+    await saveFile('SlowDown backup ' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.zip', zip);
+  } catch (e) {
+    toast('Backup failed: ' + (e && e.message ? e.message : 'unknown error'), 7000);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Back up library';
+  }
+}
+
+async function restoreBackup(file) {
+  if (!Store.db) { toast('This browser isn’t saving data here, so a backup can’t be restored.'); return; }
+  requestPersistence();
+  toast('Restoring “' + file.name + '”…', 60000);
+  try {
+    const zip = await readZip(file);
+    const manifestBlob = await zip.get('manifest.json');
+    if (!manifestBlob) throw new Error('This file isn’t a SlowDown backup.');
+    const manifest = JSON.parse(await manifestBlob.text());
+    if (manifest.app !== 'SlowDown' || !Array.isArray(manifest.songs)) throw new Error('This file isn’t a SlowDown backup.');
+    let added = 0, updated = 0, failed = 0, currentChanged = false;
+    for (const rec of manifest.songs) {
+      const { audioFile, audioType, ...song } = rec;
+      if (!song || typeof song.id !== 'string' || song.id === 'example') continue;
+      song.title = String(song.title || 'Untitled');
+      song.settings = Object.assign(defaultSettings(), song.settings || {});
+      song.settings.loop = Object.assign({ a: null, b: null, on: false }, song.settings.loop || {});
+      song.markers = Array.isArray(song.markers) ? song.markers : [];
+      song.loops = Array.isArray(song.loops) ? song.loops : [];
+      const existing = songs.find((s) => s.id === song.id);
+      if (existing) {
+        // Same song already here: take the backup's markers, loops and settings.
+        Object.assign(existing, { title: song.title, settings: song.settings, markers: song.markers, loops: song.loops });
+        await Store.putSong(existing);
+        updated++;
+        if (current && current.id === existing.id) currentChanged = true;
+        continue;
+      }
+      const raw = await zip.get(audioFile);
+      if (!raw) { failed++; continue; }
+      const blob = new Blob([raw], { type: audioType || '' });
+      if ((await Store.putAudio(song.id, blob)) == null) { failed++; continue; }
+      await Store.putSong(song);
+      songs.push(song);
+      added++;
+    }
+    songs = [songs[0], ...songs.slice(1).sort((a, b) => b.addedAt - a.addedAt)];
+    if (currentChanged) await selectSong(current.id); else renderLibrary();
+    if (added && current && current.source === 'example') await selectSong(songs[1].id);
+    updateStorage();
+    const bits = [];
+    if (added) bits.push(added + (added === 1 ? ' song added' : ' songs added'));
+    if (updated) bits.push(updated + ' updated');
+    if (failed) bits.push(failed + ' couldn’t be saved (out of space?)');
+    toast('Backup restored: ' + (bits.join(', ') || 'nothing new') + '.', 6000);
+  } catch (e) {
+    toast('Couldn’t restore: ' + (e && e.message ? e.message : 'unknown error'), 8000);
+  }
 }
 
 // ---------------------------------------------------------------- wiring
@@ -1492,6 +1723,8 @@ function wire() {
     if (files.length) importFiles(files);
   });
 
+  $('#backupBtn').addEventListener('click', backupLibrary);
+  $('#restoreInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreBackup(f); });
   $('#captureTab').addEventListener('click', () => startCapture('tab'));
   $('#captureMic').addEventListener('click', () => startCapture('mic'));
   $('#recStop').addEventListener('click', () => stopCapture(false));
@@ -1636,7 +1869,8 @@ function wire() {
   const stored = (await Store.songs()) || [];
   stored.sort((a, b) => b.addedAt - a.addedAt);
   songs = [example.song, ...stored];
-  if (!Store.db) $('#libraryHint').textContent = 'Drop audio or video files anywhere on the page. This browser isn’t saving data here, so imports last until you close the page.';
+  if (!Store.db) $('#libraryHint').textContent = 'Drop audio or video files anywhere on the page.';
+  updateStorage();
   $('#waveBusy').hidden = true;
   await selectSong(stored.length ? stored[0].id : 'example');
   if (!current) await selectSong('example');
