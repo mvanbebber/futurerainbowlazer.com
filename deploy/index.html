@@ -70,6 +70,7 @@
   .tb:hover { background: linear-gradient(#ffffff, #e6e6e6); }
   .tb:disabled { opacity: 0.4; cursor: default; }
   .tb:disabled:hover { background: linear-gradient(var(--btn-top), var(--btn-bottom)); }
+  .tb.on svg rect { fill: #fff; }
   .tb:active, .tb.on { background: linear-gradient(var(--btn-on-top), var(--btn-on-bottom)); color: #fff; border-color: #333; }
   .tb svg { width: 22px; height: 22px; }
   .tb.sp { min-width: 46px; font-size: 14px; }
@@ -118,6 +119,9 @@
   .mini:hover { background: linear-gradient(#ffffff, #e6e6e6); }
   .mini:active { background: linear-gradient(var(--btn-on-top), var(--btn-on-bottom)); color: #fff; }
   .mini.wide { margin-left: 4px; }
+  .editable { cursor: text; }
+  .num-edit { position: fixed; z-index: 50; border: 2px solid var(--focus); border-radius: 14px; background: #fff; color: var(--ink);
+    text-align: center; font: 15px var(--ui); font-variant-numeric: tabular-nums; padding: 0 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
   .mini.acc { font-size: 17px; font-weight: 500; min-width: 38px; }
   .pill.orig { color: #fff; background: #2e9d48; border-color: #23803a; font-weight: 700; }
   .transport { display: flex; gap: 10px; align-items: center; }
@@ -263,6 +267,7 @@
   <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
   <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 4l6 6M20 4l-6 6M20 20l-6-6M4 20l6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/></symbol>
   <symbol id="i-shrink" viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l6 6M21 3l-6 6M21 21l-6-6M3 21l6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/></symbol>
+  <symbol id="i-piano" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="1.5" fill="#fff" stroke="currentColor" stroke-width="1.6"/><path d="M7.25 12v7M12 12v7M16.75 12v7" stroke="currentColor" stroke-width="1.3"/><path d="M5.7 5h2.6v7H5.7zM10.45 5h2.6v7h-2.6zM15.2 5h2.6v7h-2.6z" fill="currentColor"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M9 3h6v2h5v2H4V5h5zM6 8h12l-1 13H7z" fill="currentColor"/></symbol>
 </svg>
 
@@ -297,6 +302,7 @@
         <button class="tb" type="button" data-open="fx" title="Channels: mono, left, right, karaoke" aria-label="Channels and karaoke">Fx</button>
         <button class="tb" type="button" data-open="markers" title="Markers and saved loops" aria-label="Markers and loops"><svg><use href="#i-markers"/></svg></button>
         <button class="tb" type="button" data-open="eq" title="Equalizer" aria-label="EQ">EQ</button>
+        <button class="tb on" type="button" id="kbToggle" title="Hide the keyboard" aria-label="Keyboard" aria-pressed="true"><svg><use href="#i-piano"/></svg></button>
         <button class="tb" type="button" id="viewToggle" title="Bigger waveform (hide the tool panel)" aria-label="Bigger waveform"><svg><use href="#i-expand" id="viewIcon"/></svg></button>
       </div>
       <div class="tg">
@@ -328,9 +334,9 @@
       <div class="cgroup">
         <input class="pill white" id="markerName" placeholder="No marker here" aria-label="Name of the marker at the playhead">
         <div class="times">
-          <output class="pill yellow" id="now" title="Playhead position">0:00.00</output>
-          <button class="pill pink" type="button" id="loopStartBox" title="Loop start. Click to set it at the playhead (A).">–</button>
-          <button class="pill lavender" type="button" id="loopEndBox" title="Loop end. Click to set it at the playhead (B).">–</button>
+          <output class="pill yellow editable" id="now" title="Playhead position. Double-click to type a time.">0:00.00</output>
+          <button class="pill pink editable" type="button" id="loopStartBox" title="Loop start. Click: set it at the playhead (A). Double-click: type a time.">–</button>
+          <button class="pill lavender editable" type="button" id="loopEndBox" title="Loop end. Click: set it at the playhead (B). Double-click: type a time.">–</button>
         </div>
       </div>
       <div class="transport">
@@ -345,7 +351,7 @@
         <button class="round sm" type="button" id="nextMarker" title="Next marker (⌥→)" aria-label="Next marker"><svg><use href="#i-next"/></svg></button>
       </div>
       <div class="cgroup">
-        <div class="sp-box"><output class="pill white small" id="speedOut">100%</output></div>
+        <div class="sp-box"><output class="pill white small editable" id="speedOut" title="Speed. Double-click to type a percentage.">100%</output></div>
         <div class="srow"><svg><use href="#i-walker"/></svg><input type="range" id="speed" min="-100" max="100" step="1" value="0" list="speedTicks" aria-label="Speed"><datalist id="speedTicks"><option value="0"></option></datalist><svg><use href="#i-runner"/></svg></div>
       </div>
       <div class="cgroup pitch">
@@ -353,14 +359,14 @@
           <span class="plabel">Transpose</span>
           <button class="mini" type="button" data-semi="-12" title="Down an octave">−12</button>
           <button class="mini acc" type="button" data-semi="-1" title="Down a semitone (hold to repeat)" aria-label="Down a semitone">♭</button>
-          <output class="pill white small" id="pitchOut" title="Transposition in semitones: 0 is the original key">0</output>
+          <output class="pill white small editable" id="pitchOut" title="Transposition in semitones (0 = original key). Double-click to type, e.g. ♯2, b3, +5 or -7.">0</output>
           <button class="mini acc" type="button" data-semi="1" title="Up a semitone (hold to repeat)" aria-label="Up a semitone">♯</button>
           <button class="mini" type="button" data-semi="12" title="Up an octave">+12</button>
         </div>
         <div class="prow">
           <span class="plabel">Fine tune</span>
           <button class="mini" type="button" data-cents="-1" title="Down 1 cent (hold to repeat)">−</button>
-          <output class="pill white small" id="centsOut" title="Fine tuning in cents (100 cents = 1 semitone)">0 ¢</output>
+          <output class="pill white small editable" id="centsOut" title="Fine tuning in cents (100 cents = 1 semitone). Double-click to type -50 to 50.">0 ¢</output>
           <button class="mini" type="button" data-cents="1" title="Up 1 cent (hold to repeat)">+</button>
           <button class="mini wide" type="button" id="pitchReset" title="Back to the original pitch">Reset</button>
         </div>
@@ -2047,6 +2053,7 @@ let notesBusy = false, lastNotesAt = -1, lastNotesPitch = NaN, noteData = [];
 function updateNotes(now) {
   const cents = S().semis * 100 + S().cents;
   if (notesBusy || (Math.abs(now - lastNotesAt) < 0.02 && cents === lastNotesPitch)) return;
+  if ($('#keyboard').hidden && !(panelOpen && tab === 'pitch')) return;
   notesBusy = true;
   noteData = noteLevels(engine.search, engine.sr, now, cents);
   lastNotesAt = now; lastNotesPitch = cents;
@@ -2661,8 +2668,108 @@ function wire() {
   $('#prevMarker').addEventListener('click', () => jumpMarker(-1));
   $('#nextMarker').addEventListener('click', () => jumpMarker(1));
   $('#speed').addEventListener('input', (e) => setSpeed(sliderToSpeed(Number(e.target.value))));
-  $('#loopStartBox').addEventListener('click', setA);
-  $('#loopEndBox').addEventListener('click', setB);
+  // Pink / lavender boxes: a single click sets the point at the playhead; a double-click types it instead.
+  const clickOrEdit = (el, act) => {
+    let timer = 0;
+    el.addEventListener('click', (e) => {
+      if (e.detail === 0) { act(); return; } // keyboard
+      if (e.detail === 1) timer = setTimeout(act, 260);
+    });
+    el.addEventListener('dblclick', () => clearTimeout(timer));
+  };
+  clickOrEdit($('#loopStartBox'), setA);
+  clickOrEdit($('#loopEndBox'), setB);
+
+  // Every numeric box can be typed into: double-click, type, Enter (Esc cancels).
+  const parseTime = (text) => {
+    const parts = text.trim().replace(',', '.').split(':');
+    if (!parts.length || parts.length > 3 || parts.some((x) => x.trim() === '' || isNaN(Number(x)))) return null;
+    return parts.reduce((acc, x) => acc * 60 + Number(x), 0);
+  };
+  const parseNumber = (text) => {
+    const n = Number(text.trim().replace(',', '.').replace(/[%¢c\s]/gi, '').replace('−', '-'));
+    return text.trim() !== '' && isFinite(n) ? n : null;
+  };
+  const editors = {
+    now: { get: () => clock(engine.currentTime()), parse: parseTime, apply: (t) => seek(clamp(t, 0, engine.duration)), hint: 'a time such as 1:23.45 or 83.4' },
+    loopStartBox: {
+      get: () => (S().loop.a != null ? clock(S().loop.a) : clock(engine.currentTime())), parse: parseTime, hint: 'a time such as 1:01.34',
+      apply: (t) => { const l = S().loop; t = clamp(t, 0, engine.duration); setLoop(t, l.b != null && l.b > t + 0.05 ? l.b : Math.min(engine.duration, t + 4)); },
+    },
+    loopEndBox: {
+      get: () => (S().loop.b != null ? clock(S().loop.b) : clock(engine.currentTime())), parse: parseTime, hint: 'a time such as 1:10.71',
+      apply: (t) => { const l = S().loop; t = clamp(t, 0, engine.duration); setLoop(l.a != null && l.a < t - 0.05 ? l.a : Math.max(0, t - 4), t, false); },
+    },
+    speedOut: {
+      get: () => String(Math.round(S().speed * 100)), hint: 'a speed from 25 to 200 (%)',
+      // "70" means 70%; a small number such as 0.7 is read as a multiplier.
+      parse: (text) => { const n = parseNumber(text); return n == null || n <= 0 ? null : n <= 4 ? n : n / 100; },
+      apply: (v) => { if (v < 0.25 || v > 2) toast('Speed goes from 25% to 200%.', 2500); setSpeed(v); },
+    },
+    pitchOut: {
+      get: () => String(S().semis), hint: 'semitones such as ♯2, b3, +5 or -7',
+      parse: (text) => {
+        let t = text.trim().replace(/[♯#]/g, '+').replace(/[♭b]/gi, '-').replace('−', '-').replace(/st$/i, '').trim();
+        if (/^[+-]?$/.test(t)) return t ? null : 0;
+        t = t.replace(/^([+-])\s*/, '$1');
+        const n = Number(t);
+        return Number.isInteger(n) ? n : null;
+      },
+      apply: (v) => { if (Math.abs(v) > 24) toast('Transpose goes from ♭24 to ♯24.', 2500); setPitch(v, S().cents); },
+    },
+    centsOut: {
+      get: () => String(S().cents), hint: 'cents from -50 to 50',
+      parse: (text) => { const n = parseNumber(text); return n == null ? null : Math.round(n); },
+      apply: (v) => { if (Math.abs(v) > 50) toast('Fine tune goes from −50 to +50 cents.', 2500); setPitch(S().semis, v); },
+    },
+  };
+  for (const [id, ed] of Object.entries(editors)) {
+    const el = $('#' + id);
+    el.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      if (!current) return;
+      const r = el.getBoundingClientRect();
+      const input = document.createElement('input');
+      input.className = 'num-edit';
+      input.type = 'text';
+      input.inputMode = id === 'pitchOut' || id === 'centsOut' ? 'text' : 'decimal';
+      input.setAttribute('aria-label', el.getAttribute('title') || 'Value');
+      Object.assign(input.style, { left: r.left - 2 + 'px', top: r.top - 2 + 'px', width: Math.max(r.width, 90) + 4 + 'px', height: r.height + 4 + 'px' });
+      input.value = ed.get();
+      document.body.append(input);
+      input.focus(); input.select();
+      let done = false;
+      const finish = (commit) => {
+        if (done) return;
+        done = true;
+        const text = input.value;
+        input.remove();
+        if (!commit) return;
+        const v = ed.parse(text);
+        if (v == null) { toast('Couldn’t read “' + text + '”. Type ' + ed.hint + '.', 3500); return; }
+        ed.apply(v);
+      };
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+        else if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+        ev.stopPropagation();
+      });
+      input.addEventListener('blur', () => finish(true));
+    });
+  }
+
+  // Keyboard on/off, remembered in this browser.
+  const setKeyboardVisible = (on) => {
+    $('#keyboard').hidden = !on;
+    const b = $('#kbToggle');
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+    b.title = on ? 'Hide the keyboard' : 'Show the keyboard';
+    try { localStorage.setItem('slowdown.keyboard', on ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+    lastNotesAt = -1; dirtyWave = true;
+  };
+  $('#kbToggle').addEventListener('click', () => setKeyboardVisible($('#keyboard').hidden));
+  try { if (localStorage.getItem('slowdown.keyboard') === '0') setKeyboardVisible(false); } catch (e) { /* storage unavailable */ }
 
   // waveform: click to seek, drag to loop, ctrl/⌘-wheel or trackpad pinch to zoom, sideways wheel to scroll
   const wave = $('#wave');
