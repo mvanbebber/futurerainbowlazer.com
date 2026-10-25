@@ -264,6 +264,51 @@
     .tb { min-width: 34px; height: 34px; }
     .tb.sp { min-width: 40px; font-size: 13px; }
   }
+  /* iPhone and other phones in portrait: everything on one screen, tool panel as a bottom sheet. */
+  @media (max-width: 600px) {
+    body { overflow: hidden; }
+    .app { height: 100%; min-height: 0; }
+    .app > .wave-wrap { flex: 1 1 auto; height: auto; min-height: 80px; }
+    .toolbar { gap: 4px 6px; padding-block: 5px; justify-content: center; }
+    .tb, .tb.sp { min-width: 30px; height: 30px; padding: 0 3px; font-size: 13px; }
+    .tb.sp { min-width: 35px; font-size: 12px; }
+    .tb svg { width: 18px; height: 18px; }
+    .tb .ab { font-size: 10px; }
+    .doc-title { display: none; }
+    .ruler { height: 40px; }
+    .flag-edit { top: 14px; }
+    #keyboard { height: 44px; }
+    .hscroll { height: 14px; }
+    .controls { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "sl sl" "ti ti" "tr tp" "sp sp" "pi pi";
+      gap: 6px 8px; padding-block: 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+    .controls .cgroup { gap: 0; }
+    .c-sliders { grid-area: sl; display: flex; gap: 10px; }
+    .c-sliders .srow { flex: 1 1 0; min-width: 0; gap: 4px; }
+    .controls .srow input[type=range] { width: 100%; max-width: none; flex: 1 1 auto; }
+    .controls .srow svg { width: 17px; height: 17px; }
+    .c-times { grid-area: ti; }
+    #markerName { display: none; }
+    .times { flex-wrap: nowrap; gap: 6px; }
+    .times .pill { flex: 1 1 0; min-width: 0; height: 26px; font-size: 14px; padding: 0 4px; }
+    .transport { grid-area: tr; gap: 6px; }
+    .round { width: 40px; height: 40px; }
+    .round svg { width: 18px; height: 18px; }
+    .tpair { grid-area: tp; grid-template-columns: repeat(4, auto); justify-content: end; align-items: center; gap: 6px; }
+    .round.sm { width: 34px; height: 34px; }
+    .round.sm svg { width: 15px; height: 15px; }
+    .c-speed { grid-area: sp; display: flex; align-items: center; gap: 8px; }
+    .c-speed .srow { flex: 1 1 auto; min-width: 0; }
+    .c-speed .pill.small { min-width: 58px; height: 24px; }
+    .cgroup.pitch { grid-area: pi; display: flex; justify-content: space-between; gap: 6px; }
+    .plabel { display: none; }
+    .prow { gap: 3px; }
+    .mini, .mini.acc { min-width: 28px; height: 26px; padding: 0 4px; font-size: 12px; }
+    .mini.acc { min-width: 30px; font-size: 16px; }
+    .mini.wide { margin-left: 2px; }
+    .prow .pill.small { min-width: 40px; height: 26px; font-size: 13px; padding: 0 4px; }
+    .app > .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; max-height: 62%; border-top: 1px solid var(--line);
+      box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  }
 </style>
 <!-- /app:head -->
 </head>
@@ -359,11 +404,11 @@
     <canvas id="keyboard" aria-label="Piano keyboard. Notes sounding at the playhead light up; click a key to hear it."></canvas>
 
     <div class="controls">
-      <div class="cgroup">
+      <div class="cgroup c-sliders">
         <div class="srow"><svg><use href="#i-zoom-out"/></svg><input type="range" id="zoom" min="0" max="1000" value="0" aria-label="Zoom"><svg><use href="#i-zoom-in"/></svg></div>
         <div class="srow"><svg><use href="#i-spk"/></svg><input type="range" id="volume" min="0" max="100" value="100" aria-label="Volume"><svg><use href="#i-spk-loud"/></svg></div>
       </div>
-      <div class="cgroup">
+      <div class="cgroup c-times">
         <input class="pill white" id="markerName" placeholder="No marker here" aria-label="Name of the marker at the playhead">
         <div class="times">
           <output class="pill yellow editable" id="now" title="Playhead position. Double-click to type a time.">0:00.00</output>
@@ -382,7 +427,7 @@
         <button class="round sm" type="button" id="prevMarker" title="Previous marker (⌥←)" aria-label="Previous marker"><svg><use href="#i-prev"/></svg></button>
         <button class="round sm" type="button" id="nextMarker" title="Next marker (⌥→)" aria-label="Next marker"><svg><use href="#i-next"/></svg></button>
       </div>
-      <div class="cgroup">
+      <div class="cgroup c-speed">
         <div class="sp-box"><output class="pill white small editable" id="speedOut" title="Speed. Double-click to type a percentage.">100%</output></div>
         <div class="srow"><svg><use href="#i-walker"/></svg><input type="range" id="speed" min="-100" max="100" step="1" value="0" list="speedTicks" aria-label="Speed"><datalist id="speedTicks"><option value="0"></option></datalist><svg><use href="#i-runner"/></svg></div>
       </div>
@@ -2076,7 +2121,8 @@ function drawRuler(now) {
   const c = $('#ruler'), dpr = sizeCanvas(c), g = c.getContext('2d');
   const W = c.width, H = c.height, x = (t) => ((t - view.start) / view.span) * W;
   g.clearRect(0, 0, W, H);
-  const boxH = 17 * dpr, boxY = H - boxH - 8 * dpr;
+  const compact = H < 46 * dpr;
+  const boxH = (compact ? 15 : 17) * dpr, boxY = H - boxH - (compact ? 7 : 8) * dpr;
 
   // Lay out the flags (also used for click and drag hit-testing).
   flagHits = []; markerHits = [];
@@ -2100,15 +2146,15 @@ function drawRuler(now) {
   // time numbers
   const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
   const step = steps.find((s) => view.span / s <= W / (95 * dpr)) || 600;
-  g.font = '500 ' + (13 * dpr) + 'px ' + C.num;
+  g.font = '500 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
   g.textBaseline = 'alphabetic';
   for (let t = Math.ceil(view.start / step) * step; t <= view.start + view.span; t += step) {
     const tx = Math.round(x(t));
     const label = step < 1 ? (t % 60).toFixed(2) : shortClock(t);
     g.fillStyle = '#8a8a8a';
-    g.fillRect(tx, 4 * dpr, dpr, 15 * dpr);
+    g.fillRect(tx, 3 * dpr, dpr, (compact ? 12 : 15) * dpr);
     g.fillStyle = '#666';
-    g.fillText(label, tx + 4 * dpr, 17 * dpr);
+    g.fillText(label, tx + 4 * dpr, (compact ? 13 : 17) * dpr);
   }
 
   // markers on top
@@ -2120,7 +2166,7 @@ function drawRuler(now) {
     g.strokeStyle = f.section ? C['flag-section-edge'] : C['flag-edge'];
     g.lineWidth = dpr;
     g.beginPath(); g.rect(f.left + 0.5, boxY + 0.5, f.w, boxH); g.fill(); g.stroke();
-    g.font = '600 ' + (12 * dpr) + 'px ' + C.ui;
+    g.font = '600 ' + ((compact ? 11 : 12) * dpr) + 'px ' + C.ui;
     g.fillStyle = '#1b1b1b'; g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillText(f.text, f.left + f.w / 2, boxY + boxH / 2 + 0.5 * dpr);
     g.textAlign = 'start';
@@ -3225,7 +3271,7 @@ function wire() {
   $('#waveBusy').hidden = true;
   await selectSong(stored.length ? stored[0].id : 'example');
   if (!current) await selectSong('example');
-  showPanel('library');
+  if (matchMedia('(max-width: 600px)').matches) { tab = 'library'; hidePanel(); } else showPanel('library');
   requestAnimationFrame(frame);
 })();
 </script>
