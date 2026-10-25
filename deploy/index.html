@@ -2438,10 +2438,13 @@ async function play() {
   await engine.play();
   dirtyWave = true;
 }
-// End of the song: back to the start of the loop if one is on, otherwise back to where playback started.
+// End of the song: go back to the start of the loop if one is on, otherwise to where playback started,
+// and keep playing.
 function returnAfterEnd() {
   const l = S().loop;
-  seek(l.on && l.a != null ? l.a : playOrigin);
+  const origin = l.on && l.a != null ? l.a : playOrigin;
+  seek(origin);
+  play().then(() => { playOrigin = origin; });
   saveSoon();
 }
 function togglePlay() { if (engine.playing) { engine.pause(); saveSoon(); } else play(); }
