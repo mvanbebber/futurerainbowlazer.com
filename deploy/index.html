@@ -75,9 +75,9 @@
   .tb.sp { min-width: 46px; font-size: 14px; }
   .tb .ab { font-size: 13px; line-height: 1; }
 
-  .ruler { display: block; width: 100%; height: 56px; background: linear-gradient(#fbfbfb, #dedede); border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+  .ruler { display: block; width: 100%; height: 50px; background: linear-gradient(#fbfbfb, #dedede); border-bottom: 1px solid var(--line-soft); cursor: pointer; }
   .ruler-wrap { position: relative; }
-  .flag-edit { position: absolute; top: 1px; width: 160px; height: 24px; border: 2px solid var(--focus); border-radius: 4px; padding: 0 6px; font: 600 12px var(--ui); background: #fff; z-index: 2; }
+  .flag-edit { position: absolute; top: 21px; width: 160px; height: 24px; border: 2px solid var(--focus); border-radius: 4px; padding: 0 6px; font: 600 12px var(--ui); background: #fff; z-index: 2; }
   .app > .wave-wrap { flex: 1 1 auto; min-height: 120px; position: relative; background: var(--wave-bg); }
   #wave { position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: pan-y; }
   .wave-busy { position: absolute; inset: 0; display: grid; place-items: center; color: var(--wave); font-weight: 600; }
@@ -1958,60 +1958,68 @@ function drawWave(now) {
 // Marker strip: numbered green flags (orange for sections) with a red pointer, plus a light time scale.
 let flagHits = [], markerHits = [];
 function drawRuler(now) {
-  // Layout (CSS px): marker flags along the top, big time numbers along the bottom edge next to the waveform,
-  // and a thin red pin from each flag down to its exact position.
+  // Layout (CSS px): time numbers in the top row, marker flags below them with red pointers onto the
+  // waveform. Markers take precedence: they have their own row, bolder styling, and are drawn last.
   const c = $('#ruler'), dpr = sizeCanvas(c), g = c.getContext('2d');
   const W = c.width, H = c.height, x = (t) => ((t - view.start) / view.span) * W;
   g.clearRect(0, 0, W, H);
+  const boxH = 17 * dpr, boxY = H - boxH - 8 * dpr;
+
+  // Lay out the flags (also used for click and drag hit-testing).
+  flagHits = []; markerHits = [];
+  const flags = [];
+  let lastRight = -Infinity;
+  g.font = '600 ' + (12 * dpr) + 'px ' + C.ui;
+  for (const m of current.markers) {
+    if (m.t < view.start - view.span * 0.05 || m.t > view.start + view.span) continue;
+    const mx = Math.round(x(m.t)), section = m.kind === 'section';
+    markerHits.push({ x: mx / dpr, m });
+    const text = m.kind === 'beat' ? '' : markerLabel(m);
+    if (!text) { flags.push({ m, mx }); continue; }
+    const w = Math.max(18 * dpr, g.measureText(text).width + 10 * dpr);
+    const left = clamp(mx - w / 2, 0, W - w - dpr);
+    if (left < lastRight + 2 * dpr && !section) { flags.push({ m, mx }); continue; }
+    lastRight = left + w;
+    flags.push({ m, mx, text, left, w, section });
+    flagHits.push({ left: left / dpr, right: (left + w) / dpr, t: m.t, m });
+  }
+
+  // time numbers
   const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
-  const step = steps.find((s) => view.span / s <= W / (110 * dpr)) || 600;
-  g.font = '600 ' + (15 * dpr) + 'px ' + C.num;
+  const step = steps.find((s) => view.span / s <= W / (95 * dpr)) || 600;
+  g.font = '500 ' + (13 * dpr) + 'px ' + C.num;
   g.textBaseline = 'alphabetic';
-  g.fillStyle = '#555';
   for (let t = Math.ceil(view.start / step) * step; t <= view.start + view.span; t += step) {
     const tx = Math.round(x(t));
-    g.fillRect(tx, H - 22 * dpr, dpr, 22 * dpr);
-    g.fillText(step < 1 ? (t % 60).toFixed(2) : shortClock(t), tx + 4 * dpr, H - 6 * dpr);
+    const label = step < 1 ? (t % 60).toFixed(2) : shortClock(t);
+    g.fillStyle = '#8a8a8a';
+    g.fillRect(tx, 4 * dpr, dpr, 15 * dpr);
+    g.fillStyle = '#666';
+    g.fillText(label, tx + 4 * dpr, 17 * dpr);
   }
+
   const l = S().loop;
   if (l.a != null && l.b != null) {
     g.fillStyle = l.on ? C['sel-bg'] : C['sel-bg-off'];
     g.fillRect(x(l.a), H - 3 * dpr, Math.max(dpr, x(l.b) - x(l.a)), 3 * dpr);
   }
-  flagHits = []; markerHits = [];
-  const boxH = 17 * dpr, boxY = 4 * dpr;
-  const visible = current.markers.filter((m) => m.t >= view.start - view.span * 0.05 && m.t <= view.start + view.span);
-  // pins first, so flags sit on top of them
-  for (const m of visible) {
-    const mx = Math.round(x(m.t));
-    markerHits.push({ x: mx / dpr, m });
+
+  // markers on top
+  for (const f of flags) {
     g.fillStyle = C.playhead;
-    g.globalAlpha = m.kind === 'beat' ? 0.45 : 0.8;
-    g.fillRect(mx, m.kind === 'beat' ? H - 14 * dpr : boxY, dpr, H);
-    g.globalAlpha = 1;
-    g.beginPath(); g.moveTo(mx - 4 * dpr, H - 7 * dpr); g.lineTo(mx + 4 * dpr + dpr, H - 7 * dpr); g.lineTo(mx + dpr / 2, 0 + H); g.closePath(); g.fill();
-  }
-  let lastRight = -Infinity;
-  for (const m of visible) {
-    const text = m.kind === 'beat' ? '' : markerLabel(m);
-    if (!text) continue;
-    const mx = Math.round(x(m.t)), section = m.kind === 'section';
-    g.font = '600 ' + (12 * dpr) + 'px ' + C.ui;
-    const w = Math.max(18 * dpr, g.measureText(text).width + 10 * dpr);
-    const left = clamp(mx - w / 2, 0, W - w - dpr);
-    if (left < lastRight + 2 * dpr && !section) continue;
-    g.fillStyle = section ? C['flag-section'] : C.flag;
-    g.strokeStyle = section ? C['flag-section-edge'] : C['flag-edge'];
+    g.beginPath(); g.moveTo(f.mx - 5 * dpr, H - 8 * dpr); g.lineTo(f.mx + 5 * dpr + dpr, H - 8 * dpr); g.lineTo(f.mx + dpr / 2, H); g.closePath(); g.fill();
+    if (!f.text) continue;
+    g.fillStyle = f.section ? C['flag-section'] : C.flag;
+    g.strokeStyle = f.section ? C['flag-section-edge'] : C['flag-edge'];
     g.lineWidth = dpr;
-    g.beginPath(); g.rect(left + 0.5, boxY + 0.5, w, boxH); g.fill(); g.stroke();
+    g.beginPath(); g.rect(f.left + 0.5, boxY + 0.5, f.w, boxH); g.fill(); g.stroke();
+    g.font = '600 ' + (12 * dpr) + 'px ' + C.ui;
     g.fillStyle = '#1b1b1b'; g.textBaseline = 'middle'; g.textAlign = 'center';
-    g.fillText(text, left + w / 2, boxY + boxH / 2 + 0.5 * dpr);
+    g.fillText(f.text, f.left + f.w / 2, boxY + boxH / 2 + 0.5 * dpr);
     g.textAlign = 'start';
-    lastRight = left + w;
-    flagHits.push({ left: left / dpr, right: (left + w) / dpr, t: m.t, m });
   }
   const px = x(now);
-  if (px >= 0 && px <= W) { g.fillStyle = C.playhead; g.fillRect(Math.round(px - dpr / 2), H - 10 * dpr, Math.max(1, Math.round(1.5 * dpr)), 10 * dpr); }
+  if (px >= 0 && px <= W) { g.fillStyle = C.playhead; g.fillRect(Math.round(px - dpr / 2), H - 8 * dpr, Math.max(1, Math.round(1.5 * dpr)), 8 * dpr); }
 }
 
 // Piano keyboard from C1 to C7; keys light up with the strength of each note at the playhead.
