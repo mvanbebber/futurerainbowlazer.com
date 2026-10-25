@@ -32,7 +32,7 @@ targets:
         PRODUCT_NAME: SlowDownBuddy
         PRODUCT_BUNDLE_IDENTIFIER: com.futurerainbowlazer.slowdownbuddy
         TARGETED_DEVICE_FAMILY: "1,2"
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: iOS/Info.plist
       properties:
@@ -121,7 +121,7 @@ targets:
       base:
         PRODUCT_NAME: SlowDownBuddy
         PRODUCT_BUNDLE_IDENTIFIER: com.futurerainbowlazer.slowdownbuddy
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
     info:
       path: macOS/Info.plist
