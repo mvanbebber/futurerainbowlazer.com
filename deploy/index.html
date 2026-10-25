@@ -11,8 +11,8 @@
   [hidden] { display: none !important; }
 </style>
 <!-- app:head -->
-<title>Slow Down Buddy: slow down music without changing pitch</title>
-<meta name="description" content="Free online tool for learning songs by ear. Slow down MP3, WAV, FLAC, M4A and video audio without changing pitch, loop tricky passages, transpose, add markers. Works in your browser on Mac, PC, iPhone and iPad.">
+<title>Slow Down Buddy: record audio from any website and slow it down</title>
+<meta name="description" content="Record the audio playing on any website, right in your browser, and save it to Slow Down Buddy. Then slow it down without changing pitch, loop tricky passages, transpose and add markers to learn songs by ear. Also opens MP3, WAV, FLAC, M4A and video files. Free.">
 <link rel="canonical" href="https://slowdownbuddy.com/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -20,13 +20,13 @@
 <meta name="theme-color" content="#2b2b2b">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Slow Down Buddy">
-<meta property="og:title" content="Slow Down Buddy: slow down music without changing pitch">
-<meta property="og:description" content="Slow down any song, loop the hard parts and transpose, right in your browser. Free, no sign-up.">
+<meta property="og:title" content="Slow Down Buddy: record audio from any website and slow it down">
+<meta property="og:description" content="Record audio from any website in your browser, then slow it down, loop the hard parts and transpose. Free, no sign-up.">
 <meta property="og:url" content="https://slowdownbuddy.com/">
 <meta property="og:image" content="https://slowdownbuddy.com/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"Slow Down Buddy","url":"https://slowdownbuddy.com/","applicationCategory":"MultimediaApplication","operatingSystem":"Any (web browser)","description":"Slow down music without changing pitch, loop sections, transpose and mark up songs to learn them by ear.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+{"@context":"https://schema.org","@type":"WebApplication","name":"Slow Down Buddy","url":"https://slowdownbuddy.com/","applicationCategory":"MultimediaApplication","operatingSystem":"Any (web browser)","description":"Record the audio playing on any website in your browser and save it to your library, then slow it down without changing pitch, loop sections, transpose and mark up songs to learn them by ear.","featureList":["Record audio from any website or browser tab and save it to your library","Record from the microphone","Slow down or speed up without changing pitch (25% to 200%)","Transpose by semitones and fine-tune by cents","A-B loops, section, measure and beat markers","EQ, panning and karaoke-style center cancel","Opens MP3, WAV, FLAC, M4A (AAC, Apple Lossless, Opus), MP4 and voice memos","Works offline in the browser; files stay on your device"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -253,7 +253,8 @@
   .eq-row small { display: block; color: var(--muted); font-family: var(--num); font-size: 11px; }
   .eq-row output { font-family: var(--num); text-align: right; font-variant-numeric: tabular-nums; }
   .note-chip { font-family: var(--num); font-weight: 600; padding: 2px 10px; border-radius: 99px; background: #ffe2c4; border: 1px solid #e9a25b; color: #6b3700; }
-  .soundcheck { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+  .soundcheck, .about { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+  .soundcheck h4, .about h4, .about p { margin: 0; }
   .help { color: var(--muted); font-size: 12px; line-height: 1.8; margin: 0; }
   .help kbd { font-family: var(--num); font-size: 11px; border: 1px solid #bbb; border-radius: 3px; padding: 0 4px; background: #fff; color: var(--ink); }
   .radio-list { display: grid; gap: 6px; }
@@ -338,7 +339,7 @@
 </head>
 <body>
 <!-- app:body -->
-<noscript><h1>Slow Down Buddy</h1><p>Slow down music without changing pitch, loop tricky passages, transpose and add markers to learn songs by ear. Plays MP3, WAV, FLAC, M4A, MP4 and voice memos. Please enable JavaScript to use the app.</p></noscript>
+<noscript><h1>Slow Down Buddy</h1><p>Record the audio playing on any website, right in your browser, and save it to your Slow Down Buddy library. Then slow it down without changing pitch, loop tricky passages, transpose and add markers to learn songs by ear. Also plays MP3, WAV, FLAC, M4A, MP4 and voice memos. Please enable JavaScript to use the app.</p></noscript>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-doc" viewBox="0 0 16 16"><path d="M3 1h7l3 3v11H3z" fill="#fff" stroke="#666"/><path d="M6 12V6l5-1v5" fill="none" stroke="#b4691b" stroke-width="1.2"/><circle cx="5" cy="12" r="1.4" fill="#b4691b"/><circle cx="10" cy="10.5" r="1.4" fill="#b4691b"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></symbol>
@@ -381,7 +382,7 @@
         <button class="tb" type="button" data-open="library" title="Library: your songs, backup and restore" aria-label="Library"><svg><use href="#i-list"/></svg></button>
         <label class="tb" for="fileInput" title="Open an audio or video file" aria-label="Open file"><svg><use href="#i-open"/></svg></label>
         <button class="tb" type="button" id="tbBackup" title="Save a backup of your library (songs, loops, markers)" aria-label="Back up library"><svg><use href="#i-save"/></svg></button>
-        <button class="tb" type="button" id="captureTab" title="Capture audio from a browser tab (YouTube, Spotify web)" aria-label="Capture a tab"><svg><use href="#i-screen"/></svg></button>
+        <button class="tb" type="button" id="captureTab" title="Record audio from any website: pick a browser tab and it’s saved to your library" aria-label="Record audio from a website"><svg><use href="#i-screen"/></svg></button>
         <button class="tb" type="button" id="captureMic" title="Record with the microphone" aria-label="Record microphone"><svg><use href="#i-mic"/></svg></button>
       </div>
       <input id="fileInput" class="visually-hidden" type="file" multiple accept="audio/*,video/*,.flac,.m4a,.wav,.mp3,.aac,.ogg,.opus,.webm,.mp4,.mov,.qta">
@@ -492,7 +493,7 @@
       <ul class="songs" id="songs"></ul>
       <div class="library-side">
       <div class="row"><label class="small muted" for="songTitle">Title</label><input class="text-input" id="songTitle" value=""></div>
-      <p class="hint" id="libraryHint">Open files with the folder button or drop them anywhere on the page. Songs, loops and markers are kept in this browser.</p>
+      <p class="hint" id="libraryHint">Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button. Songs, loops and markers are kept in this browser.</p>
       <div class="storage">
         <p class="storage-line" id="storageLine">Checking storage…</p>
         <div class="row">
@@ -544,6 +545,10 @@
     </div>
 
     <div class="pbody" data-panel="keys" hidden>
+      <div class="about">
+        <h4>Record audio from any website</h4>
+        <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome or Edge, press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud, on any device.</p>
+      </div>
       <div class="soundcheck">
         <h4>Sound check</h4>
         <p class="sub" id="soundStatus">Checking…</p>
@@ -3468,7 +3473,7 @@ function wire() {
   const stored = (await Store.songs()) || [];
   stored.sort((a, b) => b.addedAt - a.addedAt);
   songs = [example.song, ...stored];
-  if (!Store.db) $('#libraryHint').textContent = 'Open files with the folder button or drop them anywhere on the page.';
+  if (!Store.db) $('#libraryHint').textContent = 'Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button.';
   $('#waveBusy').hidden = true;
   await selectSong(stored.length ? stored[0].id : 'example');
   if (!current) await selectSong('example');
