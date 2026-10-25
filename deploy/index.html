@@ -1868,10 +1868,38 @@ function confirmDelete(li, song) {
 
 function decodeNative(arrayBuffer) {
   const ctx = engine.context();
+  // Safari rejects with null, which would surface as "unknown error".
+  const fail = (e) => e || new Error('this browser’s decoder couldn’t read it');
   return new Promise((resolve, reject) => {
-    const p = ctx.decodeAudioData(arrayBuffer, resolve, reject);
-    if (p && p.then) p.then(resolve, reject);
+    const p = ctx.decodeAudioData(arrayBuffer, resolve, (e) => reject(fail(e)));
+    if (p && p.then) p.then(resolve, (e) => reject(fail(e)));
   });
+}
+
+// M4A/MP4: when the browser's decoder refuses one (Safari can't decode Apple Lossless at all), m4a-decoder.js
+// reads the file itself: Apple Lossless in JavaScript, AAC through WebCodecs or re-wrapped for Safari's decoder.
+function looksLikeMP4(bytes) {
+  if (bytes.length < 12) return false;
+  const tag = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
+  return ['ftyp', 'moov', 'mdat', 'free', 'wide', 'skip'].includes(tag);
+}
+let m4aLibrary = null;
+function loadM4ALibrary() {
+  if (window.M4ADecoder) return Promise.resolve(window.M4ADecoder);
+  if (!m4aLibrary) {
+    m4aLibrary = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'm4a-decoder.js';
+      script.onload = () => (window.M4ADecoder ? resolve(window.M4ADecoder) : reject(new Error('M4A decoder missing')));
+      script.onerror = () => { m4aLibrary = null; reject(new Error('the M4A decoder couldn’t be loaded')); };
+      document.head.append(script);
+    });
+  }
+  return m4aLibrary;
+}
+async function decodeM4A(bytes) {
+  const lib = await loadM4ALibrary();
+  return lib.decode(bytes, engine.context());
 }
 
 // FLAC: Safari on iPhone/iPad (and every iOS browser, which all use Safari's engine) can't decode it, so
@@ -1954,12 +1982,14 @@ async function decode(arrayBuffer) {
   const flac = looksLikeFlac(bytes);
   // Safari's own decoder (every iPhone/iPad browser) can't be trusted with FLAC: go straight to libFLAC.
   if (flac && IS_IOS) return decodeFlac(bytes);
-  // decodeAudioData takes ownership of its buffer, so give it a copy when a FLAC fallback may be needed.
+  const mp4 = !flac && looksLikeMP4(bytes);
+  // decodeAudioData takes ownership of its buffer, so give it a copy when a fallback may be needed.
   try {
-    return await decodeNative(flac ? arrayBuffer.slice(0) : arrayBuffer);
+    return await decodeNative(flac || mp4 ? arrayBuffer.slice(0) : arrayBuffer);
   } catch (e) {
-    if (!flac) throw e;
-    return decodeFlac(bytes);
+    if (flac) return decodeFlac(bytes);
+    if (mp4) return decodeM4A(bytes);
+    throw e;
   }
 }
 
@@ -1979,7 +2009,7 @@ async function importBlob(blob, title, source) {
     return song;
   } catch (e) {
     const why = e && e.message ? e.message : String(e || 'unknown error');
-    toast('Couldn’t read “' + title + '”: ' + why + '. Try converting it to WAV, MP3 or M4A, and tell us what this message said.', 12000);
+    toast('Couldn’t read “' + title + '”: ' + why + '. If it keeps happening, try converting it to WAV or MP3.', 12000);
     return null;
   } finally {
     $('#waveBusy').hidden = true;
