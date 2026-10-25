@@ -12,3 +12,4 @@ SlowDown/macOS/*.entitlements
 SlowDown/BroadcastExtension/Info.plist
 SlowDown/BroadcastExtension/*.entitlements
 SlowDown.zip
+slowdown-netlify.zip
