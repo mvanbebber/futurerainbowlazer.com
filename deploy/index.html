@@ -187,11 +187,13 @@
   .text-input, select { min-height: 28px; border-radius: 5px; border: 1px solid #a8a8a8; background: #fff; padding: 0 8px; min-width: 0; }
   .text-input { flex: 1 1 180px; }
 
-  .library-body { grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); align-items: start; }
-  .library-side { display: grid; gap: 10px; min-width: 0; }
-  @media (max-width: 760px) { .library-body { grid-template-columns: minmax(0, 1fr); } }
+  /* Songs, loops and markers side by side; loops and markers stack beside the songs on mid widths, everything stacks on phones. */
+  .library-body { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto 1fr; grid-template-areas: "songs loops markers" "store loops markers"; gap: 12px 18px; align-items: start; }
+  .lib-songs { grid-area: songs; } .lib-store { grid-area: store; gap: 8px; } .lib-loops { grid-area: loops; } .lib-markers { grid-area: markers; }
+  @media (max-width: 1100px) { .library-body { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; grid-template-areas: "songs loops" "songs markers" "store markers"; } }
+  @media (max-width: 700px) { .library-body { grid-template-columns: minmax(0, 1fr); grid-template-areas: "songs" "loops" "markers" "store"; } }
   /* Rows are about 29px, so the list always has room for at least five songs. */
-  .songs { list-style: none; margin: 0; padding: 0; display: grid; align-content: start; min-height: 152px; max-height: 300px; overflow: auto; background: #fff; border: 1px solid var(--line-soft); border-radius: 6px; }
+  .songs { list-style: none; margin: 0; padding: 0; display: grid; align-content: start; min-height: 152px; max-height: 232px; overflow: auto; background: #fff; border: 1px solid var(--line-soft); border-radius: 6px; }
   .song { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-bottom: 1px solid #eee; }
   .song:last-child { border-bottom: 0; }
   .song > button.pick { display: flex; align-items: baseline; gap: 10px; text-align: left; background: none; border: 0; padding: 5px 10px; cursor: pointer; min-width: 0; }
@@ -210,8 +212,6 @@
 
   .list { display: grid; background: #fff; border: 1px solid var(--line-soft); border-radius: 6px; padding: 0 10px; }
   .list:empty { display: none; }
-  .lm-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-  @media (max-width: 860px) { .lm-body { grid-template-columns: minmax(0, 1fr); } }
   .lm-col { display: grid; gap: 6px; min-width: 0; }
   .lm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 28px; }
   .lm-head h4 { margin: 0; }
@@ -252,7 +252,6 @@
   .eq-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 64px; gap: 10px; align-items: center; max-width: 620px; }
   .eq-row small { display: block; color: var(--muted); font-family: var(--num); font-size: 11px; }
   .eq-row output { font-family: var(--num); text-align: right; font-variant-numeric: tabular-nums; }
-  .note-chip { font-family: var(--num); font-weight: 600; padding: 2px 10px; border-radius: 99px; background: #ffe2c4; border: 1px solid #e9a25b; color: #6b3700; }
   .soundcheck, .about { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
   .soundcheck h4, .about h4, .about p { margin: 0; }
   .help { color: var(--muted); font-size: 12px; line-height: 1.8; margin: 0; }
@@ -379,7 +378,7 @@
 
     <div class="toolbar" role="toolbar" aria-label="Tools">
       <div class="tg">
-        <button class="tb" type="button" data-open="library" title="Library: your songs, backup and restore" aria-label="Library"><svg><use href="#i-list"/></svg></button>
+        <button class="tb" type="button" data-open="library" title="Library: songs, saved loops and markers, backup" aria-label="Library and loops"><svg><use href="#i-list"/></svg></button>
         <label class="tb" for="fileInput" title="Open an audio or video file" aria-label="Open file"><svg><use href="#i-open"/></svg></label>
         <button class="tb" type="button" id="tbBackup" title="Save a backup of your library (songs, loops, markers)" aria-label="Back up library"><svg><use href="#i-save"/></svg></button>
         <button class="tb" type="button" id="captureTab" title="Record audio from any website: pick a browser tab and it’s saved to your library" aria-label="Record audio from a website"><svg><use href="#i-screen"/></svg></button>
@@ -404,7 +403,6 @@
       </div>
       <div class="tg">
         <button class="tb" type="button" data-open="fx" title="Pan: stereo, mono, left, right, karaoke" aria-label="Pan">Pan</button>
-        <button class="tb" type="button" data-open="markers" title="Saved loops and markers" aria-label="Loops and markers"><svg><use href="#i-loops"/></svg></button>
         <button class="tb" type="button" data-open="eq" title="Equalizer" aria-label="EQ">EQ</button>
         <button class="tb on" type="button" id="kbToggle" title="Hide the keyboard" aria-label="Keyboard" aria-pressed="true"><svg><use href="#i-piano-on" id="kbIcon"/></svg></button>
         <button class="tb" type="button" id="viewToggle" title="Bigger waveform (hide the tool panel)" aria-label="Bigger waveform"><svg><use href="#i-expand" id="viewIcon"/></svg></button>
@@ -480,37 +478,35 @@
 
   <section class="panel" id="panel" aria-label="Tools">
     <div class="panel-head" role="tablist">
-      <button class="ptab" type="button" role="tab" data-tab="library">Library</button>
-      <button class="ptab" type="button" role="tab" data-tab="markers">Loops &amp; markers</button>
+      <button class="ptab" type="button" role="tab" data-tab="library">Library &amp; loops</button>
       <button class="ptab" type="button" role="tab" data-tab="eq">EQ</button>
       <button class="ptab" type="button" role="tab" data-tab="fx">Pan</button>
-      <button class="ptab" type="button" role="tab" data-tab="pitch">Notes</button>
       <button class="ptab" type="button" role="tab" data-tab="keys">Shortcuts</button>
       <button class="ptab close" type="button" id="panelClose" aria-label="Close panel">✕</button>
     </div>
 
     <div class="pbody library-body" data-panel="library">
-      <ul class="songs" id="songs"></ul>
-      <div class="library-side">
-      <div class="row"><label class="small muted" for="songTitle">Title</label><input class="text-input" id="songTitle" value=""></div>
-      <p class="hint" id="libraryHint">Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button. Songs, loops and markers are kept in this browser.</p>
-      <div class="storage">
-        <p class="storage-line" id="storageLine">Checking storage…</p>
-        <div class="row">
-          <button class="btn small" id="backupBtn" type="button">Back up library</button>
-          <label class="btn small" for="restoreInput">Restore backup</label>
-          <input id="restoreInput" class="visually-hidden" type="file" accept=".zip,application/zip">
+      <section class="lm-col lib-songs" aria-label="Songs">
+        <div class="lm-head"><h4>Songs</h4></div>
+        <ul class="songs" id="songs"></ul>
+        <div class="row"><label class="small muted" for="songTitle">Title</label><input class="text-input" id="songTitle" value=""></div>
+      </section>
+      <section class="lm-col lib-store" aria-label="Storage and backup">
+        <p class="hint" id="libraryHint">Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button. Songs, loops and markers are kept in this browser.</p>
+        <div class="storage">
+          <p class="storage-line" id="storageLine">Checking storage…</p>
+          <div class="row">
+            <button class="btn small" id="backupBtn" type="button">Back up library</button>
+            <label class="btn small" for="restoreInput">Restore backup</label>
+            <input id="restoreInput" class="visually-hidden" type="file" accept=".zip,application/zip">
+          </div>
         </div>
-      </div>
-      </div>
-    </div>
-
-    <div class="pbody lm-body" data-panel="markers" hidden>
-      <section class="lm-col" aria-label="Loops">
+      </section>
+      <section class="lm-col lib-loops" aria-label="Loops">
         <div class="lm-head"><h4>Loops</h4><div id="loopEditor"></div></div>
         <div class="list compact" id="loopList"></div>
       </section>
-      <section class="lm-col" aria-label="Markers">
+      <section class="lm-col lib-markers" aria-label="Markers">
         <div class="lm-head"><h4>Markers</h4>
           <div class="row">
             <button class="btn small" data-add="section" type="button">+ Section <kbd>S</kbd></button>
@@ -536,12 +532,6 @@
         <label><input type="radio" name="channelMode" value="karaoke"> Karaoke: cancel the center</label>
       </div>
       <p class="hint">Karaoke removes whatever is mixed dead center, usually the lead vocal and often bass and kick. Left or right only can isolate a hard-panned guitar or piano.</p>
-    </div>
-
-    <div class="pbody" data-panel="pitch" hidden>
-      <p class="sub" id="a440">A4 440.0 Hz → 440.0 Hz</p>
-      <div class="row" id="notesNow"><span class="muted">Strongest notes at the playhead</span></div>
-      <p class="hint">The keyboard lights up the notes sounding at the playhead, shifted by the transpose setting so they match what you hear. Click a key to hear that note. Pause on a chord to read it.</p>
     </div>
 
     <div class="pbody" data-panel="keys" hidden>
@@ -1714,7 +1704,7 @@ let peaks = null;
 const buffers = new Map();
 const view = { start: 0, span: 20, follow: true };
 let selection = null;
-let tab = 'markers';
+let tab = 'library';
 let saveTimer = 0;
 let dirtyWave = true;
 
@@ -2173,7 +2163,6 @@ function renderSpeedPitch() {
   $('#pitchOut').textContent = st.semis > 0 ? '♯' + st.semis : st.semis < 0 ? '♭' + -st.semis : '0';
   $('#pitchOut').classList.toggle('orig', st.semis === 0);
   $('#centsOut').textContent = (st.cents > 0 ? '+' : st.cents < 0 ? '−' : '') + Math.abs(st.cents) + ' ¢';
-  $('#a440').textContent = 'A4 440.0 Hz → ' + (440 * Math.pow(2, st.cents / 1200)).toFixed(1) + ' Hz';
   $('#volume').value = Math.round(st.volume * 100);
 }
 
@@ -2185,7 +2174,7 @@ function renderLoop() {
   $('#loopEndBox').textContent = has ? clock(l.b) : '–';
   $('#loopBtn').classList.toggle('on', has && l.on);
   $('#loopBtn').setAttribute('aria-pressed', String(has && l.on));
-  if (panelOpen && tab === 'markers') renderLoops();
+  if (panelOpen && tab === 'library') renderLoops();
   dirtyWave = true;
 }
 
@@ -2199,8 +2188,7 @@ function showPanel(name) {
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
   document.querySelectorAll('.tb[data-open]').forEach((b) => b.classList.toggle('on', b.dataset.open === name));
   syncViewToggle();
-  if (name === 'markers') { renderMarkers(); renderLoops(); }
-  if (name === 'library') updateStorage();
+  if (name === 'library') { renderMarkers(); renderLoops(); updateStorage(); }
 }
 function syncViewToggle() {
   $('#viewIcon').setAttribute('href', panelOpen ? '#i-expand' : '#i-shrink');
@@ -2419,19 +2407,11 @@ let notesBusy = false, lastNotesAt = -1, lastNotesPitch = NaN, noteData = [];
 function updateNotes(now) {
   const cents = S().semis * 100 + S().cents;
   if (notesBusy || (Math.abs(now - lastNotesAt) < 0.02 && cents === lastNotesPitch)) return;
-  if ($('#keyboard').hidden && !(panelOpen && tab === 'pitch')) return;
+  if ($('#keyboard').hidden) return;
   notesBusy = true;
   noteData = noteLevels(engine.search, engine.sr, now, cents);
   lastNotesAt = now; lastNotesPitch = cents;
   drawKeyboard();
-  if (panelOpen && tab === 'pitch') {
-    const strongest = noteData.map((v, i) => [v, i + LOW_NOTE]).filter(([v]) => v > 0.45).sort((a, b) => b[0] - a[0]).slice(0, 4).map(([, m]) => m).sort((a, b) => a - b);
-    const box = $('#notesNow');
-    box.textContent = '';
-    const lab = document.createElement('span'); lab.className = 'muted'; lab.textContent = 'Strongest notes at the playhead';
-    box.append(lab);
-    for (const m of strongest) { const s = document.createElement('span'); s.className = 'note-chip'; s.textContent = noteName(m); box.append(s); }
-  }
   notesBusy = false;
 }
 
@@ -3132,7 +3112,7 @@ function wire() {
     const m = current.markers.find((x) => x.id === lastMarkerId);
     if (!m) return;
     m.label = e.target.value; saveSoon(); dirtyWave = true;
-    if (panelOpen && tab === 'markers') renderMarkers();
+    if (panelOpen && tab === 'library') renderMarkers();
   });
   $('#markerName').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); });
   $('#playBtn').addEventListener('click', play);
@@ -3349,7 +3329,7 @@ function wire() {
     if (m && moved) {
       current.markers.sort((a, b) => a.t - b.t);
       saveSoon(); lastMarkerId = undefined; dirtyWave = true;
-      if (panelOpen && tab === 'markers') renderMarkers();
+      if (panelOpen && tab === 'library') renderMarkers();
     } else seek(m ? m.t : timeAt(ruler, e.clientX));
   });
   ruler.addEventListener('pointercancel', () => { markerDrag = null; });
@@ -3359,7 +3339,7 @@ function wire() {
     if (commit) {
       editing.label = flagEdit.value.trim();
       saveSoon(); lastMarkerId = undefined; dirtyWave = true;
-      if (panelOpen && tab === 'markers') renderMarkers();
+      if (panelOpen && tab === 'library') renderMarkers();
     }
     editing = null;
     flagEdit.hidden = true;
