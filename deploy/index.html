@@ -1055,6 +1055,8 @@ class Engine {
 
   context() {
     if (this.ctx) return this.ctx;
+    // iPhone/iPad: play like a music app, so the silent switch doesn't mute playback (Safari 16.4+).
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
     const AC = window.AudioContext || window.webkitAudioContext;
     const ctx = new AC();
     this.ctx = ctx;
