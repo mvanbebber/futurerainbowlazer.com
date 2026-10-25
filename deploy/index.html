@@ -68,6 +68,8 @@
   .tg > .tb:last-child { border-radius: 0 4px 4px 0; }
   .tg > .tb:only-child { border-radius: 4px; }
   .tb:hover { background: linear-gradient(#ffffff, #e6e6e6); }
+  .tb:disabled { opacity: 0.4; cursor: default; }
+  .tb:disabled:hover { background: linear-gradient(var(--btn-top), var(--btn-bottom)); }
   .tb:active, .tb.on { background: linear-gradient(var(--btn-on-top), var(--btn-on-bottom)); color: #fff; border-color: #333; }
   .tb svg { width: 22px; height: 22px; }
   .tb.sp { min-width: 46px; font-size: 14px; }
@@ -245,6 +247,8 @@
   <symbol id="i-ff" viewBox="0 0 24 24"><path d="M4 6v12l8-6zM13 6v12l8-6z" fill="currentColor"/></symbol>
   <symbol id="i-prev" viewBox="0 0 24 24"><path d="M5 6h2.5v12H5zM19 6v12l-10-6z" fill="currentColor"/></symbol>
   <symbol id="i-next" viewBox="0 0 24 24"><path d="M16.5 6H19v12h-2.5zM5 6v12l10-6z" fill="currentColor"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M9 3h6v2h5v2H4V5h5zM6 8h12l-1 13H7z" fill="currentColor"/></symbol>
 </svg>
 
@@ -263,6 +267,10 @@
         <button class="tb" type="button" id="tbAB" title="Set loop start (A), then loop end (B), at the playhead" aria-label="Set loop A then B"><span class="ab">A<br>↘B</span></button>
         <button class="tb" type="button" id="loopBtn" title="Loop on / off (L)" aria-label="Loop" aria-pressed="false"><svg><use href="#i-loop"/></svg></button>
         <button class="tb" type="button" id="clearLoop" title="Clear the loop" aria-label="Clear loop"><svg><use href="#i-clearloop"/></svg></button>
+      </div>
+      <div class="tg">
+        <button class="tb" type="button" id="undoBtn" title="Undo (⌘Z / Ctrl+Z)" aria-label="Undo" disabled><svg><use href="#i-undo"/></svg></button>
+        <button class="tb" type="button" id="redoBtn" title="Redo (⇧⌘Z / Ctrl+Y)" aria-label="Redo" disabled><svg><use href="#i-redo"/></svg></button>
       </div>
       <div class="tg">
         <button class="tb" type="button" id="zoomSel" title="Zoom to the loop" aria-label="Zoom to loop"><svg><use href="#i-zoomsel"/></svg></button>
@@ -407,6 +415,7 @@
         <kbd>Space</kbd> play / pause · <kbd>Enter</kbd> stop and return · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker<br>
         <kbd>A</kbd> <kbd>B</kbd> loop start / end at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
         <kbd>S</kbd> section · <kbd>M</kbd> measure · <kbd>N</kbd> beat marker, tapped along while it plays<br>
+        <kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Y</kbd> redo · drag a loop's middle to move it, its edges to resize it<br>
         <kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> speed ±5% · <kbd>+</kbd> <kbd>−</kbd> zoom · ⌘/Ctrl + scroll or pinch on the waveform to zoom
       </p>
     </div>
@@ -891,6 +900,112 @@ const S = () => current.settings;
 function saveSoon() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { if (current && current.source !== 'example') Store.putSong(current); }, 500);
+  noteEdit();
+}
+
+// ---------------------------------------------------------------- undo / redo
+// Every change to a song goes through saveSoon(), which records a before/after snapshot. Changes less than
+// 400 ms apart (a slider drag, a loop or marker drag) collapse into one step. Removing and adding songs
+// are undoable too.
+const undoHistory = { undo: [], redo: [], base: null, baseId: null, timer: 0 };
+const HISTORY_LIMIT = 300;
+function snapshot(song) {
+  const { pos, ...settings } = song.settings;
+  return JSON.stringify({ title: song.title, settings, markers: song.markers, loops: song.loops });
+}
+function noteEdit() { clearTimeout(undoHistory.timer); undoHistory.timer = setTimeout(flushEdit, 400); }
+function flushEdit() {
+  clearTimeout(undoHistory.timer);
+  if (!current || undoHistory.baseId !== current.id) return;
+  const now = snapshot(current);
+  if (now === undoHistory.base) return;
+  pushHistory({ kind: 'edit', id: current.id, before: undoHistory.base, after: now });
+  undoHistory.base = now;
+}
+function pushHistory(entry) {
+  undoHistory.undo.push(entry);
+  if (undoHistory.undo.length > HISTORY_LIMIT) undoHistory.undo.shift();
+  undoHistory.redo = [];
+  updateUndoButtons();
+}
+function updateUndoButtons() {
+  $('#undoBtn').disabled = !undoHistory.undo.length;
+  $('#redoBtn').disabled = !undoHistory.redo.length;
+}
+
+async function applySnapshot(id, json) {
+  if (!current || current.id !== id) await selectSong(id);
+  if (!current || current.id !== id) return;
+  const snap = JSON.parse(json), pos = current.settings.pos, oldMode = current.settings.mode;
+  current.title = snap.title;
+  current.markers = snap.markers;
+  current.loops = snap.loops;
+  current.settings = { ...snap.settings, pos };
+  const st = current.settings;
+  engine.speed = st.speed;
+  engine.setPitch(st.semis * 100 + st.cents);
+  engine.setVolume(st.volume);
+  st.eq.forEach((g, i) => engine.setEQ(i, g));
+  if (st.mode !== oldMode) engine.setMode(st.mode);
+  applyLoop();
+  undoHistory.base = json; undoHistory.baseId = id;
+  clearTimeout(saveTimer);
+  if (current.source !== 'example') Store.putSong(current);
+  renderAll();
+  lastNotesAt = -1;
+}
+
+async function removeSong(id, record = true) {
+  const index = songs.findIndex((s) => s.id === id);
+  if (index < 1) return;
+  const song = songs[index];
+  if (current && current.id === id) flushEdit();
+  const blob = await Store.getAudio(id), buffer = buffers.get(id);
+  await Store.deleteSong(id);
+  songs.splice(index, 1);
+  buffers.delete(id);
+  if (record) pushHistory({ kind: 'delete', song, blob, buffer, index });
+  if (current && current.id === id) await selectSong(songs[0].id);
+  else renderLibrary();
+  updateStorage();
+}
+async function bringBackSong(entry) {
+  if (entry.blob) await Store.putAudio(entry.song.id, entry.blob);
+  if (entry.song.source !== 'example') await Store.putSong(entry.song);
+  if (entry.buffer) buffers.set(entry.song.id, entry.buffer);
+  songs.splice(clamp(entry.index || 1, 1, songs.length), 0, entry.song);
+  await selectSong(entry.song.id);
+  updateStorage();
+}
+
+async function applyEntry(entry, undoing) {
+  if (entry.kind === 'edit') {
+    await applySnapshot(entry.id, undoing ? entry.before : entry.after);
+    toast(undoing ? 'Undo' : 'Redo', 900);
+  } else if ((entry.kind === 'delete') === undoing) {
+    await bringBackSong(entry);
+    toast((undoing ? 'Undo: ' : 'Redo: ') + 'brought back “' + entry.song.title + '”', 2200);
+  } else {
+    await removeSong(entry.song.id, false);
+    toast((undoing ? 'Undo: ' : 'Redo: ') + 'removed “' + entry.song.title + '”', 2200);
+  }
+}
+let historyBusy = false;
+async function undo() {
+  if (historyBusy) return;
+  flushEdit();
+  const entry = undoHistory.undo.pop();
+  if (!entry) { toast('Nothing to undo.', 1500); return; }
+  historyBusy = true;
+  try { undoHistory.redo.push(entry); await applyEntry(entry, true); } finally { historyBusy = false; updateUndoButtons(); }
+}
+async function redo() {
+  if (historyBusy) return;
+  flushEdit();
+  const entry = undoHistory.redo.pop();
+  if (!entry) { toast('Nothing to redo.', 1500); return; }
+  historyBusy = true;
+  try { undoHistory.undo.push(entry); await applyEntry(entry, false); } finally { historyBusy = false; updateUndoButtons(); }
 }
 
 // ---------------------------------------------------------------- library
@@ -930,13 +1045,8 @@ function confirmDelete(li, song) {
   const yes = document.createElement('button'); yes.className = 'btn small danger'; yes.type = 'button'; yes.textContent = 'Remove';
   const no = document.createElement('button'); no.className = 'btn small ghost'; no.type = 'button'; no.textContent = 'Keep';
   yes.addEventListener('click', async () => {
-    await Store.deleteSong(song.id);
-    songs = songs.filter((s) => s.id !== song.id);
-    buffers.delete(song.id);
-    if (current && current.id === song.id) await selectSong(songs[0].id);
-    else renderLibrary();
-    toast('Removed “' + song.title + '”.');
-    updateStorage();
+    await removeSong(song.id);
+    toast('Removed “' + song.title + '”. Press ' + (isMac ? '⌘Z' : 'Ctrl+Z') + ' to bring it back.', 4000);
   });
   no.addEventListener('click', () => bar.remove());
   bar.append(yes, no);
@@ -963,6 +1073,7 @@ async function importBlob(blob, title, source) {
     await Store.putSong(song);
     if (Store.db && stored == null) toast('“' + title + '” plays now but couldn’t be saved: this browser is out of storage space for the site. Remove some songs or back up and clear.', 8000);
     await selectSong(song.id);
+    pushHistory({ kind: 'add', song, blob, buffer, index: 1 });
     updateStorage();
     return song;
   } catch (e) {
@@ -984,6 +1095,7 @@ async function importFiles(files) {
 async function selectSong(id) {
   const song = songs.find((s) => s.id === id);
   if (!song) return;
+  flushEdit();
   if (current && engine.buffer) { current.settings.pos = engine.currentTime(); saveSoon(); }
   engine.pause();
   let buffer = buffers.get(id);
@@ -1004,6 +1116,8 @@ async function selectSong(id) {
   // Keep only a few decoded songs in memory.
   for (const key of buffers.keys()) if (buffers.size > 3 && key !== id && key !== 'example') buffers.delete(key);
   current = song;
+  undoHistory.baseId = song.id;
+  undoHistory.base = snapshot(song);
   const st = song.settings;
   engine.load(buffer, st.mode);
   engine.speed = st.speed;
@@ -1217,6 +1331,18 @@ function drawWave(now) {
       g.fillStyle = selection || l.on ? C['sel-bg'] : C['sel-bg-off']; g.fillRect(a, 0, b - a, H);
       drawLanes(g, W, H, C['sel-wave']);
       g.restore();
+      // Edge handles: a bright line with a grip in the middle, so the edges read as draggable.
+      if (!selection) {
+        for (const ex of [x(band[0]), x(band[1])]) {
+          if (ex < -4 * dpr || ex > W + 4 * dpr) continue;
+          g.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          g.fillRect(Math.round(ex - dpr), 0, 2 * dpr, H);
+          g.fillStyle = '#ffffff'; g.strokeStyle = C['sel-bg']; g.lineWidth = dpr;
+          g.beginPath(); g.rect(Math.round(ex - 4 * dpr) + 0.5, H / 2 - 14 * dpr, 8 * dpr, 28 * dpr); g.fill(); g.stroke();
+          g.fillStyle = C['sel-bg'];
+          for (let k = -1; k <= 1; k++) g.fillRect(Math.round(ex - 2 * dpr), H / 2 + k * 6 * dpr, 4 * dpr, dpr);
+        }
+      }
     }
   }
   for (const m of current.markers) {
@@ -1628,6 +1754,7 @@ async function finishCapture() {
 }
 
 // ---------------------------------------------------------------- storage status, persistence, backup
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 const isSafari = /^((?!chrome|chromium|crios|fxios|edg|android).)*safari/i.test(navigator.userAgent) && !navigator.standalone;
 const fmtBytes = (n) => (n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? Math.round(n / 1e6) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB');
 
@@ -1854,6 +1981,8 @@ function wire() {
   });
 
   // toolbar
+  $('#undoBtn').addEventListener('click', undo);
+  $('#redoBtn').addEventListener('click', redo);
   $('#tbBackup').addEventListener('click', backupLibrary);
   $('#backupBtn').addEventListener('click', backupLibrary);
   $('#restoreInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreBackup(f); });
@@ -1941,28 +2070,31 @@ function wire() {
     return clamp(view.start + ((clientX - r.left) / r.width) * view.span, 0, engine.duration);
   };
   // Inside the loop: drag to move it. On an edge: drag to resize it. Elsewhere: drag to make a new loop.
-  const loopHit = (clientX) => {
+  const loopHit = (clientX, pointerType) => {
     const l = S().loop;
     if (l.a == null || l.b == null) return null;
     const r = wave.getBoundingClientRect(), xp = clientX - r.left;
     const xa = ((l.a - view.start) / view.span) * r.width, xb = ((l.b - view.start) / view.span) * r.width;
-    if (Math.abs(xp - xa) <= 6) return 'a';
-    if (Math.abs(xp - xb) <= 6) return 'b';
+    // Generous grab zone around each edge (bigger for fingers), but always leave the middle third for moving.
+    const tol = Math.min(pointerType === 'touch' ? 22 : 12, Math.max(4, (xb - xa) / 3));
+    const da = Math.abs(xp - xa), db = Math.abs(xp - xb);
+    if (da <= tol && da <= db) return 'a';
+    if (db <= tol) return 'b';
     return xp > xa && xp < xb ? 'move' : null;
   };
   wave.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     const l = S().loop;
-    drag = { x: e.clientX, t: timeAt(wave, e.clientX), moved: false, hit: loopHit(e.clientX), a0: l.a, b0: l.b };
+    drag = { x: e.clientX, t: timeAt(wave, e.clientX), moved: false, hit: loopHit(e.clientX, e.pointerType), a0: l.a, b0: l.b };
     wave.setPointerCapture(e.pointerId);
   });
   wave.addEventListener('pointermove', (e) => {
     if (!drag) {
-      const hit = loopHit(e.clientX);
+      const hit = loopHit(e.clientX, e.pointerType);
       wave.style.cursor = hit === 'move' ? 'grab' : hit ? 'ew-resize' : 'crosshair';
       return;
     }
-    if (Math.abs(e.clientX - drag.x) > 6) drag.moved = true;
+    if (Math.abs(e.clientX - drag.x) > (drag.hit === 'a' || drag.hit === 'b' ? 2 : 6)) drag.moved = true;
     if (!drag.moved) return;
     const t = timeAt(wave, e.clientX), l = S().loop;
     if (drag.hit === 'move') {
@@ -2102,6 +2234,11 @@ function wire() {
     const el = document.activeElement;
     if (el && ((el.tagName === 'INPUT' && el.type !== 'range' && el.type !== 'radio') || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
     if (el && el.type === 'range' && e.key.startsWith('Arrow')) return;
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && current) {
+      const key = e.key.toLowerCase();
+      if (key === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+      if (key === 'y' && e.ctrlKey && !e.metaKey) { e.preventDefault(); redo(); return; }
+    }
     if (e.metaKey || e.ctrlKey || !current) return;
     const k = e.key;
     const handled = () => e.preventDefault();
