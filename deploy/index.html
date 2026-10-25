@@ -58,7 +58,7 @@
 
   .app { height: 100%; display: flex; flex-direction: column; min-width: 0; background: var(--window); }
   .app > * { flex: none; }
-  .doc-title { margin-left: auto; align-self: center; font-weight: 600; color: #333; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-title { flex: 1 1 0; min-width: 0; text-align: right; align-self: center; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding-block: 7px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: linear-gradient(#e4e4e4, #cfcfcf); border-bottom: 1px solid var(--line); }
   .tg { display: flex; }
@@ -89,13 +89,13 @@
 
   #keyboard { display: block; width: 100%; height: 78px; background: #fff; cursor: pointer; border-bottom: 1px solid var(--line); }
 
-  .controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: linear-gradient(#e9e9e9, #d4d4d4); }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: linear-gradient(#e9e9e9, #d4d4d4); }
   .cgroup { display: grid; gap: 8px; align-content: center; min-width: 0; }
   .srow { display: flex; align-items: center; gap: 6px; }
   .srow svg { width: 20px; height: 20px; flex: none; color: #555; }
   .srow .glyph { width: 20px; text-align: center; font-size: 18px; color: #444; flex: none; }
   input[type=range] { accent-color: #6d6d6d; min-width: 0; }
-  .srow input[type=range] { width: 170px; max-width: 40vw; }
+  .srow input[type=range] { width: clamp(100px, 10vw, 170px); max-width: 40vw; }
   .pill { display: inline-grid; place-items: center; min-width: 104px; height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid #b9b9b9;
     font-family: var(--ui); font-size: 15px; font-variant-numeric: tabular-nums; box-shadow: inset 0 1px 2px rgba(0,0,0,0.12); }
   .pill.white { background: var(--pill-white); }
@@ -107,11 +107,12 @@
   input.pill::placeholder { color: #9a9a9a; }
   .sp-box { display: flex; justify-content: center; }
   .times { display: flex; flex-wrap: wrap; gap: 8px; }
-  .times .pill { min-width: 96px; }
+  .times { gap: 6px; }
+  .times .pill { min-width: 88px; padding: 0 8px; }
   .prow { display: flex; align-items: center; gap: 5px; }
-  .plabel { width: 64px; font-size: 12px; color: var(--muted); }
-  .prow .pill.small { min-width: 64px; }
-  .mini { min-width: 34px; height: 26px; padding: 0 6px; border-radius: 13px; border: 1px solid #8f8f8f; background: linear-gradient(var(--btn-top), var(--btn-bottom));
+  .plabel { width: 58px; font-size: 12px; color: var(--muted); }
+  .prow .pill.small { min-width: 56px; padding: 0 8px; }
+  .mini { min-width: 31px; height: 26px; padding: 0 6px; border-radius: 13px; border: 1px solid #8f8f8f; background: linear-gradient(var(--btn-top), var(--btn-bottom));
     cursor: pointer; font-weight: 600; font-size: 13px; color: #2a2a2a; font-variant-numeric: tabular-nums; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
   .mini:hover { background: linear-gradient(#ffffff, #e6e6e6); }
   .mini:active { background: linear-gradient(var(--btn-on-top), var(--btn-on-bottom)); color: #fff; }
@@ -119,7 +120,7 @@
   .editable { cursor: text; }
   .num-edit { position: fixed; z-index: 50; border: 2px solid var(--focus); border-radius: 14px; background: #fff; color: var(--ink);
     text-align: center; font: 15px var(--ui); font-variant-numeric: tabular-nums; padding: 0 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-  .mini.acc { font-size: 17px; font-weight: 500; min-width: 38px; }
+  .mini.acc { font-size: 17px; font-weight: 500; min-width: 34px; }
   .pill.orig { color: #fff; background: #2e9d48; border-color: #23803a; font-weight: 700; }
   .transport { display: flex; gap: 10px; align-items: center; }
   .round { width: 46px; height: 46px; border-radius: 50%; border: 1px solid #8a8a8a; display: grid; place-items: center; cursor: pointer;
@@ -131,10 +132,10 @@
   .tpair { display: grid; grid-template-columns: auto auto; gap: 8px; }
 
   /* tool panel */
-  .app > .panel { flex: 0 1 auto; max-height: 40%; min-height: 0; display: flex; flex-direction: column; background: var(--window); min-width: 0; }
+  .app > .panel { flex: 0 1 auto; max-height: max(40%, 330px); min-height: 0; display: flex; flex-direction: column; background: var(--window); min-width: 0; }
   .panel > .pbody { overflow: auto; min-height: 0; }
-  .panel-head { display: flex; align-items: stretch; background: linear-gradient(#f2f2f2, #e0e0e0); border-bottom: 1px solid var(--line-soft); overflow-x: auto; }
-  .ptab { border: 0; border-right: 1px solid var(--line-soft); background: none; padding: 8px 14px; cursor: pointer; white-space: nowrap; color: #444; }
+  .panel-head { flex: none; display: flex; align-items: stretch; background: linear-gradient(#f2f2f2, #e0e0e0); border-bottom: 1px solid var(--line-soft); overflow-x: auto; }
+  .ptab { flex: none; border: 0; border-right: 1px solid var(--line-soft); background: none; padding: 7px 14px 9px; line-height: 18px; cursor: pointer; white-space: nowrap; color: #444; }
   .ptab[aria-selected="true"] { background: var(--window); color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 #555; }
   .ptab.close { margin-left: auto; border-right: 0; border-left: 1px solid var(--line-soft); }
   .pbody { padding-block: 12px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 10px; min-width: 0; }
@@ -181,6 +182,32 @@
 
   .list { display: grid; background: #fff; border: 1px solid var(--line-soft); border-radius: 6px; padding: 0 10px; }
   .list:empty { display: none; }
+  .lm-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .lm-body { grid-template-columns: minmax(0, 1fr); } }
+  .lm-col { display: grid; gap: 6px; min-width: 0; }
+  .lm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 28px; }
+  .lm-head h4 { margin: 0; }
+  #loopEditor { flex: 1 1 260px; min-width: 0; }
+  .loop-save { display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .loop-save .text-input { min-height: 24px; flex: 1 1 120px; font-size: 12px; }
+  /* Compact lists: 23px rows, scrolling after 10. */
+  .list.compact { padding: 0; max-height: 232px; overflow: auto; }
+  .list.compact .item { padding: 0 8px; min-height: 23px; }
+  .list.compact .item input[type=text] { padding: 1px 6px; }
+  .list.compact .item .btn.small { min-height: 20px; padding: 0 6px; }
+  .loop-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto 22px; gap: 8px; align-items: center; min-height: 23px; padding: 0 6px 0 8px;
+    border-bottom: 1px solid #eee; cursor: pointer; user-select: none; }
+  .loop-row:last-child { border-bottom: 0; }
+  .loop-row:hover { background: #eef3fd; }
+  .loop-row:active { background: #dbe5fb; }
+  .loop-row.active { background: #dbe5fb; box-shadow: inset 3px 0 0 var(--sel-bg); }
+  .loop-row .go { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--sel-bg); color: #fff; }
+  .loop-row .go svg { width: 10px; height: 10px; margin-left: 1px; }
+  .loop-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .loop-row .range, .loop-row .len { font-family: var(--num); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .loop-row .del { border: 0; background: none; color: #999; cursor: pointer; font-size: 13px; width: 22px; height: 22px; border-radius: 4px; }
+  .loop-row .del:hover { background: #f6d6d6; color: var(--danger); }
+  .loop-row .rename { font: inherit; font-weight: 600; border: 1px solid var(--focus); border-radius: 4px; padding: 1px 4px; min-width: 0; }
   .item { display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid #eee; }
   .item:last-child { border-bottom: 0; }
   .item .kind { width: 10px; height: 10px; border-radius: 2px; justify-self: center; }
@@ -220,7 +247,7 @@
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* Small or short screens: let the page scroll instead of squeezing the waveform. */
-  @media (max-width: 700px), (max-height: 620px) {
+  @media (max-width: 700px), (max-height: 740px) {
     body { overflow: auto; }
     .app { height: auto; min-height: 100%; }
     .app > .wave-wrap { flex: none; height: 170px; }
@@ -400,17 +427,21 @@
       </div>
     </div>
 
-    <div class="pbody" data-panel="markers" hidden>
-      <h4>Loops</h4>
-      <div id="loopEditor"></div>
-      <div class="list" id="loopList"></div>
-      <h4>Markers</h4>
-      <div class="row">
-        <button class="btn small" data-add="section" type="button">+ Section <kbd>S</kbd></button>
-        <button class="btn small" data-add="measure" type="button">+ Measure <kbd>M</kbd></button>
-        <button class="btn small" data-add="beat" type="button">+ Beat <kbd>N</kbd></button>
-      </div>
-      <div class="list" id="markerList"></div>
+    <div class="pbody lm-body" data-panel="markers" hidden>
+      <section class="lm-col" aria-label="Loops">
+        <div class="lm-head"><h4>Loops</h4><div id="loopEditor"></div></div>
+        <div class="list compact" id="loopList"></div>
+      </section>
+      <section class="lm-col" aria-label="Markers">
+        <div class="lm-head"><h4>Markers</h4>
+          <div class="row">
+            <button class="btn small" data-add="section" type="button">+ Section <kbd>S</kbd></button>
+            <button class="btn small" data-add="measure" type="button">+ Measure <kbd>M</kbd></button>
+            <button class="btn small" data-add="beat" type="button">+ Beat <kbd>N</kbd></button>
+          </div>
+        </div>
+        <div class="list compact" id="markerList"></div>
+      </section>
     </div>
 
     <div class="pbody" data-panel="eq" hidden>
@@ -2197,37 +2228,66 @@ function renderLoops() {
   ed.textContent = '';
   const l = S().loop;
   if (l.a == null || l.b == null) {
-    ed.innerHTML = '<p class="empty">Drag across the waveform, or press A and B while it plays, to make a loop.</p>';
+    ed.innerHTML = '<span class="sub">Drag across the waveform to make a loop, then save it here.</span>';
   } else {
-    const info = document.createElement('p'); info.className = 'sub'; info.style.margin = '0';
-    info.textContent = 'Current loop: ' + clock(l.a) + ' – ' + clock(l.b) + ' (' + (l.b - l.a).toFixed(2) + ' s)' + (l.on ? '' : ' · off');
-    const save = document.createElement('div'); save.className = 'row'; save.style.marginTop = '8px';
-    const name = document.createElement('input'); name.type = 'text'; name.className = 'text-input'; name.id = 'loopName'; name.placeholder = 'Loop name, e.g. “Solo, bars 9–12”';
-    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn primary small'; btn.textContent = 'Save loop';
+    const save = document.createElement('div'); save.className = 'loop-save';
+    const info = document.createElement('span'); info.className = 'sub'; info.style.whiteSpace = 'nowrap';
+    info.textContent = clock(l.a) + '–' + clock(l.b);
+    const name = document.createElement('input'); name.type = 'text'; name.className = 'text-input'; name.id = 'loopName'; name.placeholder = 'Name this loop';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn primary small'; btn.textContent = 'Save';
     const doSave = () => {
       current.loops.push({ id: uid(), name: name.value.trim() || 'Loop ' + (current.loops.length + 1), a: l.a, b: l.b });
       saveSoon(); renderLoops(); toast('Loop saved.');
     };
     btn.addEventListener('click', doSave);
     name.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
-    save.append(name, btn);
-    ed.append(info, save);
+    save.append(info, name, btn);
+    ed.append(save);
   }
   const list = $('#loopList');
   list.textContent = '';
+  if (!current.loops.length) {
+    list.innerHTML = '<p class="empty" style="padding:6px 8px">No saved loops yet.</p>';
+    return;
+  }
   for (const lp of current.loops) {
-    const row = document.createElement('div'); row.className = 'item';
-    const kind = document.createElement('span'); kind.className = 'kind section'; kind.style.background = 'var(--sel-bg)'; kind.style.borderColor = 'var(--sel-bg)';
-    const time = document.createElement('button'); time.type = 'button'; time.className = 'time'; time.textContent = clock(lp.a);
-    time.addEventListener('click', () => { setLoop(lp.a, lp.b); if (!engine.playing) play(); });
-    const label = document.createElement('input'); label.type = 'text'; label.value = lp.name; label.setAttribute('aria-label', 'Loop name');
-    label.addEventListener('input', () => { lp.name = label.value; saveSoon(); });
-    const ops = document.createElement('div'); ops.className = 'ops';
-    const len = document.createElement('span'); len.className = 'sub'; len.textContent = (lp.b - lp.a).toFixed(1) + ' s'; len.style.alignSelf = 'center';
-    ops.append(len,
-      iconBtn('Play this loop', 'Play', () => { setLoop(lp.a, lp.b); if (!engine.playing) play(); }),
-      iconBtn('Delete loop', '✕', () => { current.loops = current.loops.filter((x) => x !== lp); saveSoon(); renderLoops(); }, 'danger'));
-    row.append(kind, time, label, ops);
+    // The whole row is a button: click plays the loop, double-click the name to rename it.
+    const row = document.createElement('div');
+    row.className = 'loop-row' + (l.a != null && Math.abs(l.a - lp.a) < 0.005 && Math.abs(l.b - lp.b) < 0.005 ? ' active' : '');
+    row.tabIndex = 0;
+    row.setAttribute('role', 'button');
+    row.title = 'Play this loop';
+    const go = document.createElement('span'); go.className = 'go'; go.innerHTML = '<svg><use href="#i-play"/></svg>';
+    const nameEl = document.createElement('span'); nameEl.className = 'name'; nameEl.textContent = lp.name; nameEl.title = 'Double-click to rename';
+    const range = document.createElement('span'); range.className = 'range'; range.textContent = clock(lp.a) + '–' + clock(lp.b);
+    const len = document.createElement('span'); len.className = 'len'; len.textContent = (lp.b - lp.a).toFixed(1) + ' s';
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'del'; del.textContent = '✕';
+    del.title = 'Delete loop'; del.setAttribute('aria-label', 'Delete loop ' + lp.name);
+    const activate = () => { setLoop(lp.a, lp.b); if (!engine.playing) play(); renderLoops(); };
+    // A click on the name waits briefly in case it is the start of a double-click (rename).
+    let pending = 0;
+    row.addEventListener('click', (e) => {
+      if (e.target === del || e.target.closest('.rename')) return;
+      if (e.target === nameEl && e.detail === 1) { pending = setTimeout(activate, 250); return; }
+      if (e.detail <= 1) activate();
+    });
+    row.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === row) { e.preventDefault(); e.stopPropagation(); activate(); } });
+    del.addEventListener('click', () => { current.loops = current.loops.filter((x) => x !== lp); saveSoon(); renderLoops(); });
+    nameEl.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      clearTimeout(pending);
+      const input = document.createElement('input'); input.className = 'rename'; input.value = lp.name;
+      nameEl.replaceWith(input); input.focus(); input.select();
+      let done = false;
+      const finish = (commit) => {
+        if (done) return; done = true;
+        if (commit && input.value.trim()) { lp.name = input.value.trim(); saveSoon(); }
+        renderLoops();
+      };
+      input.addEventListener('keydown', (ev) => { ev.stopPropagation(); if (ev.key === 'Enter') finish(true); else if (ev.key === 'Escape') finish(false); });
+      input.addEventListener('blur', () => finish(true));
+    });
+    row.append(go, nameEl, range, len, del);
     list.append(row);
   }
 }
