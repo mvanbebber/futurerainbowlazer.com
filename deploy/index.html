@@ -2010,7 +2010,9 @@ function toggleLoop() {
     return;
   }
   l.on = !l.on;
-  applyLoop(); saveSoon(); renderLoop(); dirtyWave = true;
+  applyLoop();
+  if (l.on) seek(l.a); // switching a loop on jumps playback to it
+  saveSoon(); renderLoop(); dirtyWave = true;
 }
 
 function setA() {
@@ -2426,7 +2428,22 @@ function frame(ts) {
   requestAnimationFrame(frame);
 }
 
-async function play() { await engine.play(); dirtyWave = true; }
+// Where Play was last pressed; the playhead returns here when the song runs out (and no loop is on).
+let playOrigin = 0;
+async function play() {
+  if (!engine.playing && engine.buffer) {
+    const now = engine.currentTime();
+    playOrigin = now >= engine.duration - 0.05 ? 0 : now;
+  }
+  await engine.play();
+  dirtyWave = true;
+}
+// End of the song: back to the start of the loop if one is on, otherwise back to where playback started.
+function returnAfterEnd() {
+  const l = S().loop;
+  seek(l.on && l.a != null ? l.a : playOrigin);
+  saveSoon();
+}
 function togglePlay() { if (engine.playing) { engine.pause(); saveSoon(); } else play(); }
 function stop() {
   engine.pause();
@@ -3339,7 +3356,7 @@ function wire() {
     else if (k === '-' || k === '_') zoom(1.6);
   });
 
-  engine.onended = () => { dirtyWave = true; saveSoon(); };
+  engine.onended = returnAfterEnd;
   addEventListener('resize', () => { dirtyWave = true; lastNotesAt = -1; });
   addEventListener('pagehide', () => { if (current && current.source !== 'example') { current.settings.pos = engine.currentTime(); Store.putSong(current); } });
 }
