@@ -1514,6 +1514,10 @@ function computePeaks(buffer) {
     }
     lanes.push(p);
   }
+  // Draw quiet recordings as large as loud ones: scale the picture (not the sound) to the loudest peak.
+  let top = 0;
+  for (const p of lanes) for (const v of p) if (v > top) top = v;
+  if (top > 0.001 && top < 0.98) for (const p of lanes) for (let i = 0; i < p.length; i++) p[i] = Math.min(1, p[i] / top);
   return { lanes, pps: sr / spp };
 }
 
@@ -1567,6 +1571,39 @@ function noteLevels(signal, sr, timeSec, cents) {
 
 // ---------------------------------------------------------------- example song
 // A generated 96 BPM practice piece so the tools have something to show before you import a song.
+// ---------------------------------------------------------------- demo recording
+// Bach, Prelude No. 1 in C major, BWV 846, played by Kimiko Ishizaka (Open Well-Tempered Clavier, 2015),
+// released into the public domain under CC0. demo.mp3 sits next to this page.
+// Bar lines found from the recording (the bass note that starts each bar), checked against the score's harmony.
+const DEMO_BARS = [1.37, 5.67, 9.90, 14.22, 18.54, 22.79, 27.06, 31.36, 35.63, 39.98, 44.27, 48.56, 52.92, 57.30, 61.68,
+  66.06, 70.41, 74.83, 79.28, 83.67, 88.05, 92.43, 96.92, 101.73, 106.22, 110.60, 115.01, 119.43, 123.80, 128.27,
+  132.71, 137.14, 141.73, 146.65, 152.97];
+async function loadDemo() {
+  const res = await fetch('demo.mp3');
+  if (!res.ok) throw new Error('demo.mp3: ' + res.status);
+  const buffer = await decode(await res.arrayBuffer());
+  const bar = (n) => DEMO_BARS[n - 1];
+  const markers = DEMO_BARS.map((t) => ({ id: uid(), t, kind: 'measure', label: '' }));
+  [['Opening', 1], ['Dominant pedal', 24], ['Tonic pedal', 32]].forEach(([label, n]) => markers.push({ id: uid(), t: bar(n), kind: 'section', label }));
+  markers.sort((x, y) => x.t - y.t || (x.kind === 'section' ? -1 : 1));
+  return {
+    buffer,
+    song: {
+      id: 'example', title: 'Bach: Prelude in C major, BWV 846 (Kimiko Ishizaka)', source: 'example', addedAt: 0,
+      duration: buffer.duration, settings: defaultSettings(), markers,
+      loops: [
+        { id: uid(), name: 'Opening progression, bars 1–4', a: bar(1), b: bar(5) },
+        { id: uid(), name: 'Chromatic turn, bars 21–23', a: bar(21), b: bar(24) },
+        { id: uid(), name: 'Over the G pedal, bars 24–27', a: bar(24), b: bar(28) },
+      ],
+    },
+  };
+}
+// The demo recording is preferred; the generated riff below is only a fallback when it can't load.
+async function loadExample(sr) {
+  try { return await loadDemo(); } catch (e) { return makeExample(sr); }
+}
+
 async function makeExample(sr) {
   const bpm = 96, beat = 60 / bpm, bar = beat * 4, bars = 12, dur = bars * bar + 1.2;
   const oc = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
@@ -3385,7 +3422,7 @@ function wire() {
     engineNote = 'basic (high quality switched off)';
   }
   updateSoundCheck();
-  const [example] = await Promise.all([makeExample(ctx.sampleRate), Store.open()]);
+  const [example] = await Promise.all([loadExample(ctx.sampleRate), Store.open()]);
   buffers.set('example', example.buffer);
   const stored = (await Store.songs()) || [];
   stored.sort((a, b) => b.addedAt - a.addedAt);
