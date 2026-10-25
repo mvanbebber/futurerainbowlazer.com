@@ -13,6 +13,10 @@
 <!-- app:head -->
 <title>SlowDown</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SlowDown">
 <style>
   /* Layout: a full-screen tool: toolbar, marker strip, waveform (takes the spare height), scrollbar, keyboard,
      control bar, and a tabbed tool panel at the bottom. Deliberately one light "studio software" look in every theme. */
@@ -1028,6 +1032,9 @@ const Store = {
   getAudio(id) { return this.run('audio', 'readonly', (s) => s.get(id)); },
 };
 
+// iPhone, iPad (iPadOS reports itself as a Mac with touch) and iPod.
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 // ---------------------------------------------------------------- audio engine
 // Playback normally runs through Signalsmith Stretch (see enableHQ below), a high-quality phase-vocoder
 // stretcher running in an AudioWorklet. The WSOLA code here is the fallback for browsers without AudioWorklet.
@@ -1318,8 +1325,36 @@ class Engine {
 
   currentTime() { return this.frameNow() / this.sr; }
 
+  // iPhone: Web Audio is muted by the ring/silent switch unless a media element is playing. Starting a
+  // silent looping <audio> inside the tap moves the page to the "playback" audio session, like a music app.
+  unlockIOSAudio() {
+    if (this.silentAudio || !IS_IOS) return;
+    try {
+      const rate = 8000, n = rate; // one second of 8-bit silence
+      const wav = new Uint8Array(44 + n);
+      const v = new DataView(wav.buffer);
+      [..."RIFF"].forEach((ch, i) => (wav[i] = ch.charCodeAt(0)));
+      v.setUint32(4, 36 + n, true);
+      [..."WAVEfmt "].forEach((ch, i) => (wav[8 + i] = ch.charCodeAt(0)));
+      v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+      [..."data"].forEach((ch, i) => (wav[36 + i] = ch.charCodeAt(0)));
+      v.setUint32(40, n, true);
+      wav.fill(128, 44);
+      const audio = document.createElement('audio');
+      audio.setAttribute('playsinline', '');
+      audio.setAttribute('x-webkit-airplay', 'deny');
+      audio.loop = true;
+      audio.src = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+      const p = audio.play();
+      if (p && p.catch) p.catch(() => {});
+      this.silentAudio = audio;
+    } catch (e) { /* best effort */ }
+  }
+
   async play() {
     if (!this.buffer || this.playing) return;
+    this.unlockIOSAudio();
     const ctx = this.context();
     if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) { /* resumed on a later gesture */ } }
     if (this.playing) return;
@@ -2707,7 +2742,28 @@ function wire() {
     holdButton(b, () => setPitch(S().semis, S().cents + d), true);
   });
   $('#pitchReset').addEventListener('click', () => setPitch(0, 0));
-  $('#viewToggle').addEventListener('click', () => { if (panelOpen) hidePanel(); else showPanel(tab || 'library'); });
+  // Full view: hide the tool panel and, where the browser allows it (iPad, Mac, PC), go true full screen so
+  // the browser's own toolbar disappears too. iPhone Safari has no page full screen; use Add to Home Screen.
+  const root = document.documentElement;
+  const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const enterFullscreen = () => {
+    const request = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!request || isFullscreen()) return;
+    try { const p = request.call(root); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed here */ }
+  };
+  const exitFullscreen = () => {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (!exit || !isFullscreen()) return;
+    try { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ }
+  };
+  $('#viewToggle').addEventListener('click', () => {
+    if (panelOpen) { hidePanel(); enterFullscreen(); }
+    else { exitFullscreen(); showPanel(tab || 'library'); }
+  });
+  // Leaving full screen with the system gesture or Esc brings the panel back.
+  const onFullscreenChange = () => { if (!isFullscreen() && !panelOpen) showPanel(tab || 'library'); dirtyWave = true; };
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
   // control bar
   $('#zoom').addEventListener('input', (e) => {
