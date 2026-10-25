@@ -193,8 +193,6 @@
   .item input[type=text]:focus { border-color: var(--focus); outline: none; background: #fff; }
   .item .ops { display: flex; gap: 2px; align-items: center; }
   .empty { color: var(--muted); margin: 0; }
-  .nudge { display: grid; grid-template-columns: auto auto 1fr; gap: 8px 12px; align-items: center; }
-  .nudge .t { font-family: var(--num); font-variant-numeric: tabular-nums; }
   .sub { color: var(--muted); font-size: 12px; font-family: var(--num); }
   .eq-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 64px; gap: 10px; align-items: center; max-width: 620px; }
   .eq-row small { display: block; color: var(--muted); font-family: var(--num); font-size: 11px; }
@@ -252,7 +250,6 @@
   <symbol id="i-zoomall" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7" fill="#cfe3fb" stroke="#2c5d99" stroke-width="1.8"/><path d="m15 15 6 6" stroke="#2c5d99" stroke-width="2.8" stroke-linecap="round"/><path d="M6 10h8M6 10l2-2M6 10l2 2M14 10l-2-2M14 10l-2 2" stroke="#2c5d99" stroke-width="1.3" fill="none"/></symbol>
   <symbol id="i-runner" viewBox="0 0 24 24"><circle cx="15" cy="3.5" r="2.2" fill="currentColor"/><path d="M13.5 7 9 9.5l-2.5 3.5M13.5 7l-2 6 3.5 3-1 5.5M11.5 13l-3 3.5H4.5M13.5 7l2.5 3.5 3.5 1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-walker" viewBox="0 0 24 24"><circle cx="12" cy="3.5" r="2.2" fill="currentColor"/><path d="M12 7v7l-2 7.5M12 14l2.2 7.5M12 8l-3 4.5M12 8l3 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-markers" viewBox="0 0 24 24"><path d="M3 8l4 4-4 4M9 8l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 12h6M18 9l3 3-3 3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m14.5 14.5 6 6M7 10h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m14.5 14.5 6 6M7 10h6M10 7v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-spk" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/></symbol>
@@ -270,6 +267,7 @@
   <symbol id="i-shrink" viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l6 6M21 3l-6 6M21 21l-6-6M3 21l6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.55"/></symbol>
   <symbol id="i-piano-on" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="1.5" fill="#ff8a1c" stroke="#2a2a2a" stroke-width="1.6"/><path d="M7.25 12v7M12 12v7M16.75 12v7" stroke="#2a2a2a" stroke-width="1.3"/><path d="M5.7 5h2.6v7H5.7zM10.45 5h2.6v7h-2.6zM15.2 5h2.6v7h-2.6z" fill="#2a2a2a"/></symbol>
   <symbol id="i-piano-off" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="1.5" fill="#fff" stroke="#2a2a2a" stroke-width="1.6"/><path d="M7.25 12v7M12 12v7M16.75 12v7" stroke="#2a2a2a" stroke-width="1.3"/><path d="M5.7 5h2.6v7H5.7zM10.45 5h2.6v7h-2.6zM15.2 5h2.6v7h-2.6z" fill="#2a2a2a"/></symbol>
+  <symbol id="i-loops" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M14.2 3.4h5.6V9z" fill="currentColor"/><path d="M9.5 9.2v5.6l4.6-2.8z" fill="currentColor"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M9 3h6v2h5v2H4V5h5zM6 8h12l-1 13H7z" fill="currentColor"/></symbol>
 </svg>
 
@@ -302,7 +300,7 @@
       </div>
       <div class="tg">
         <button class="tb" type="button" data-open="fx" title="Channels: mono, left, right, karaoke" aria-label="Channels and karaoke">Fx</button>
-        <button class="tb" type="button" data-open="markers" title="Markers and saved loops" aria-label="Markers and loops"><svg><use href="#i-markers"/></svg></button>
+        <button class="tb" type="button" data-open="markers" title="Saved loops and markers" aria-label="Loops and markers"><svg><use href="#i-loops"/></svg></button>
         <button class="tb" type="button" data-open="eq" title="Equalizer" aria-label="EQ">EQ</button>
         <button class="tb on" type="button" id="kbToggle" title="Hide the keyboard" aria-label="Keyboard" aria-pressed="true"><svg><use href="#i-piano-on" id="kbIcon"/></svg></button>
         <button class="tb" type="button" id="viewToggle" title="Bigger waveform (hide the tool panel)" aria-label="Bigger waveform"><svg><use href="#i-expand" id="viewIcon"/></svg></button>
@@ -378,7 +376,7 @@
   <section class="panel" id="panel" aria-label="Tools">
     <div class="panel-head" role="tablist">
       <button class="ptab" type="button" role="tab" data-tab="library">Library</button>
-      <button class="ptab" type="button" role="tab" data-tab="markers">Markers &amp; loops</button>
+      <button class="ptab" type="button" role="tab" data-tab="markers">Loops &amp; markers</button>
       <button class="ptab" type="button" role="tab" data-tab="eq">EQ</button>
       <button class="ptab" type="button" role="tab" data-tab="fx">Channels</button>
       <button class="ptab" type="button" role="tab" data-tab="pitch">Notes</button>
@@ -403,15 +401,16 @@
     </div>
 
     <div class="pbody" data-panel="markers" hidden>
+      <h4>Loops</h4>
+      <div id="loopEditor"></div>
+      <div class="list" id="loopList"></div>
+      <h4>Markers</h4>
       <div class="row">
         <button class="btn small" data-add="section" type="button">+ Section <kbd>S</kbd></button>
         <button class="btn small" data-add="measure" type="button">+ Measure <kbd>M</kbd></button>
         <button class="btn small" data-add="beat" type="button">+ Beat <kbd>N</kbd></button>
       </div>
       <div class="list" id="markerList"></div>
-      <h4>Loop</h4>
-      <div id="loopEditor"></div>
-      <div class="list" id="loopList"></div>
     </div>
 
     <div class="pbody" data-panel="eq" hidden>
@@ -2200,23 +2199,9 @@ function renderLoops() {
   if (l.a == null || l.b == null) {
     ed.innerHTML = '<p class="empty">Drag across the waveform, or press A and B while it plays, to make a loop.</p>';
   } else {
-    const grid = document.createElement('div'); grid.className = 'nudge';
-    [['Start', 'a'], ['End', 'b']].forEach(([title, key]) => {
-      const lab = document.createElement('span'); lab.className = 'muted'; lab.textContent = title;
-      const t = document.createElement('span'); t.className = 't'; t.textContent = clock(l[key]);
-      const row = document.createElement('div'); row.className = 'row';
-      [-0.5, -0.05, 0.05, 0.5].forEach((d) => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small';
-        b.textContent = (d > 0 ? '+' : '−') + Math.abs(d).toFixed(2);
-        b.addEventListener('click', () => {
-          if (key === 'a') setLoop(Math.min(l.a + d, l.b - 0.05), l.b, true);
-          else setLoop(l.a, Math.max(l.b + d, l.a + 0.05), false);
-        });
-        row.append(b);
-      });
-      grid.append(lab, t, row);
-    });
-    const save = document.createElement('div'); save.className = 'row'; save.style.marginTop = '10px';
+    const info = document.createElement('p'); info.className = 'sub'; info.style.margin = '0';
+    info.textContent = 'Current loop: ' + clock(l.a) + ' – ' + clock(l.b) + ' (' + (l.b - l.a).toFixed(2) + ' s)' + (l.on ? '' : ' · off');
+    const save = document.createElement('div'); save.className = 'row'; save.style.marginTop = '8px';
     const name = document.createElement('input'); name.type = 'text'; name.className = 'text-input'; name.id = 'loopName'; name.placeholder = 'Loop name, e.g. “Solo, bars 9–12”';
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn primary small'; btn.textContent = 'Save loop';
     const doSave = () => {
@@ -2226,13 +2211,13 @@ function renderLoops() {
     btn.addEventListener('click', doSave);
     name.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
     save.append(name, btn);
-    ed.append(grid, save);
+    ed.append(info, save);
   }
   const list = $('#loopList');
   list.textContent = '';
   for (const lp of current.loops) {
     const row = document.createElement('div'); row.className = 'item';
-    const kind = document.createElement('span'); kind.className = 'kind section'; kind.style.background = 'var(--loop-edge)';
+    const kind = document.createElement('span'); kind.className = 'kind section'; kind.style.background = 'var(--sel-bg)'; kind.style.borderColor = 'var(--sel-bg)';
     const time = document.createElement('button'); time.type = 'button'; time.className = 'time'; time.textContent = clock(lp.a);
     time.addEventListener('click', () => { setLoop(lp.a, lp.b); if (!engine.playing) play(); });
     const label = document.createElement('input'); label.type = 'text'; label.value = lp.name; label.setAttribute('aria-label', 'Loop name');
