@@ -1998,12 +1998,6 @@ function drawRuler(now) {
     g.fillText(label, tx + 4 * dpr, 17 * dpr);
   }
 
-  const l = S().loop;
-  if (l.a != null && l.b != null) {
-    g.fillStyle = l.on ? C['sel-bg'] : C['sel-bg-off'];
-    g.fillRect(x(l.a), H - 3 * dpr, Math.max(dpr, x(l.b) - x(l.a)), 3 * dpr);
-  }
-
   // markers on top
   for (const f of flags) {
     g.fillStyle = C.playhead;
