@@ -8,8 +8,10 @@
     Devon Govett (Apache License 2.0). See THIRD-PARTY-NOTICES.txt.
   - AAC: handed to WebCodecs' AudioDecoder when the browser has it, otherwise re-wrapped as an ADTS stream, which
     Safari's decoder accepts even when it rejects the MP4 wrapper.
+  - Opus (what YouTube downloaders usually save as .m4a): decoded with libopus compiled to WebAssembly
+    (opus-decoder, MIT), which the page loads on demand and passes in as options.loadOpus.
 
-  Exposes window.M4ADecoder = { isMP4(bytes), probe(bytes), decode(bytes, ctx) }.
+  Exposes window.M4ADecoder = { isMP4(bytes), probe(bytes), decode(bytes, ctx, options) }.
 */
 (function (root) {
   'use strict';
@@ -69,6 +71,9 @@
         let esds = child(b, { start: childStart, end: entry.end }, 'esds');
         if (!esds) { const wave = child(b, { start: childStart, end: entry.end }, 'wave'); esds = wave && child(b, wave, 'esds'); }
         if (esds) config = audioSpecificConfig(b.subarray(esds.start + 4, esds.end));
+      } else if (codec === 'Opus') {
+        const box = child(b, { start: childStart, end: entry.end }, 'dOps');
+        if (box) config = b.subarray(box.start, box.end);
       }
       return { codec, channels, sampleRate, config, samples: sampleTable(b, stbl) };
     }
@@ -449,6 +454,49 @@
     return { sampleRate: rate, channels: out, length: total };
   }
 
+  // ---------- Opus ----------
+
+  async function decodeOpus(b, info, loadOpus) {
+    const d = info.config;
+    const channels = d[1], preSkip = u16(d, 2), family = d[10];
+    const options = { channels, preSkip, forceStereo: channels > 2 };
+    if (family !== 0) {
+      options.streamCount = d[11];
+      options.coupledStreamCount = d[12];
+      options.channelMappingTable = Array.from(d.subarray(13, 13 + channels));
+    }
+    const lib = await loadOpus();
+    const decoder = new lib.OpusDecoder(options);
+    try {
+      await decoder.ready;
+      const { count, offsets, sizes } = info.samples;
+      const parts = [];
+      let total = 0, outChannels = 0;
+      for (let i = 0; i < count; i += 200) {
+        const frames = [];
+        for (let j = i; j < Math.min(count, i + 200); j++) frames.push(b.subarray(offsets[j], offsets[j] + sizes[j]));
+        const r = decoder.decodeFrames(frames);
+        if (r.samplesDecoded) {
+          outChannels = Math.max(outChannels, Math.min(2, r.channelData.length));
+          parts.push(r.channelData.slice(0, 2).map((ch) => ch.slice(0, r.samplesDecoded)));
+          total += r.samplesDecoded;
+        }
+        await new Promise((res) => setTimeout(res, 0)); // keep the page responsive
+      }
+      if (!total) throw new Error('the Opus decoder found no audio');
+      const out = [];
+      for (let c = 0; c < outChannels; c++) {
+        const ch = new Float32Array(total);
+        let o = 0;
+        for (const p of parts) { ch.set(p[Math.min(c, p.length - 1)], o); o += p[0].length; }
+        out.push(ch);
+      }
+      return { sampleRate: 48000, channels: out, length: total };
+    } finally {
+      decoder.free();
+    }
+  }
+
   // ---------- entry point ----------
 
   function nativeDecode(ctx, arrayBuffer) {
@@ -459,7 +507,7 @@
   }
 
   // Returns an AudioBuffer at the context's sample rate.
-  async function decode(b, ctx) {
+  async function decode(b, ctx, options = {}) {
     const info = probe(b);
     let pcm;
     if (info.codec === 'alac') {
@@ -475,6 +523,10 @@
         try { return await nativeDecode(ctx, toADTS(b, info).buffer); } catch (e) { errors.push((e && e.message) || 'ADTS decoding failed'); }
         throw new Error('this browser couldn’t decode the AAC audio (' + errors.filter(Boolean).join('; ') + ')');
       }
+    } else if (info.codec === 'Opus') {
+      if (!info.config) throw new Error('the Opus settings are missing');
+      if (!options.loadOpus) throw new Error('the Opus decoder isn’t available');
+      pcm = await decodeOpus(b, info, options.loadOpus);
     } else {
       throw new Error('the audio codec “' + info.codec.trim() + '” isn’t supported');
     }

@@ -1876,30 +1876,17 @@ function decodeNative(arrayBuffer) {
   });
 }
 
-// M4A/MP4: when the browser's decoder refuses one (Safari can't decode Apple Lossless at all), m4a-decoder.js
-// reads the file itself: Apple Lossless in JavaScript, AAC through WebCodecs or re-wrapped for Safari's decoder.
+// M4A/MP4: when the browser's decoder refuses one (Safari can't decode Apple Lossless or Opus in MP4), m4a-decoder.js
+// reads the file itself: Apple Lossless in JavaScript, Opus with libopus (WebAssembly), AAC through WebCodecs or
+// re-wrapped for Safari's decoder.
 function looksLikeMP4(bytes) {
   if (bytes.length < 12) return false;
   const tag = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
   return ['ftyp', 'moov', 'mdat', 'free', 'wide', 'skip'].includes(tag);
 }
-let m4aLibrary = null;
-function loadM4ALibrary() {
-  if (window.M4ADecoder) return Promise.resolve(window.M4ADecoder);
-  if (!m4aLibrary) {
-    m4aLibrary = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'm4a-decoder.js';
-      script.onload = () => (window.M4ADecoder ? resolve(window.M4ADecoder) : reject(new Error('M4A decoder missing')));
-      script.onerror = () => { m4aLibrary = null; reject(new Error('the M4A decoder couldn’t be loaded')); };
-      document.head.append(script);
-    });
-  }
-  return m4aLibrary;
-}
 async function decodeM4A(bytes) {
-  const lib = await loadM4ALibrary();
-  return lib.decode(bytes, engine.context());
+  const lib = await loadLibrary('m4a-decoder.js', 'M4ADecoder', 'M4A');
+  return lib.decode(bytes, engine.context(), { loadOpus: () => loadLibrary('opus-decoder.min.js', 'opus-decoder', 'Opus') });
 }
 
 // FLAC: Safari on iPhone/iPad (and every iOS browser, which all use Safari's engine) can't decode it, so
@@ -1915,20 +1902,22 @@ function looksLikeFlac(bytes) {
   }
   return false;
 }
-let flacLibrary = null;
-function loadFlacLibrary() {
-  if (window['flac-decoder']) return Promise.resolve(window['flac-decoder']);
-  if (!flacLibrary) {
-    flacLibrary = new Promise((resolve, reject) => {
+// Load a decoder script that sits next to this page, once; resolves to the global it defines.
+const libraries = new Map();
+function loadLibrary(src, globalName, label) {
+  if (window[globalName]) return Promise.resolve(window[globalName]);
+  if (!libraries.has(src)) {
+    libraries.set(src, new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = 'flac-decoder.min.js';
-      script.onload = () => (window['flac-decoder'] ? resolve(window['flac-decoder']) : reject(new Error('FLAC decoder missing')));
-      script.onerror = () => { flacLibrary = null; reject(new Error('The FLAC decoder couldn’t be loaded.')); };
+      script.src = src;
+      script.onload = () => (window[globalName] ? resolve(window[globalName]) : reject(new Error('the ' + label + ' decoder is missing')));
+      script.onerror = () => { libraries.delete(src); reject(new Error('the ' + label + ' decoder couldn’t be loaded')); };
       document.head.append(script);
-    });
+    }));
   }
-  return flacLibrary;
+  return libraries.get(src);
 }
+const loadFlacLibrary = () => loadLibrary('flac-decoder.min.js', 'flac-decoder', 'FLAC');
 async function decodeFlac(bytes) {
   const lib = await loadFlacLibrary();
   const decoder = new lib.FLACDecoder();
