@@ -2,9 +2,9 @@ import AVFoundation
 import ReplayKit
 
 /// ReplayKit broadcast upload extension: writes the audio of whatever app is playing (YouTube, Spotify, …)
-/// to the shared App Group, where SlowDown imports it. Video frames and the microphone are ignored.
+/// to the shared App Group, where Slow Down Buddy imports it. Video frames and the microphone are ignored.
 final class SampleHandler: RPBroadcastSampleHandler {
-    private let queue = DispatchQueue(label: "com.futurerainbowlazer.slowdown.broadcast")
+    private let queue = DispatchQueue(label: "com.futurerainbowlazer.slowdownbuddy.broadcast")
     private var writer: CaptureFileWriter?
     private var startDate = Date()
 
@@ -42,7 +42,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 CFNotificationName(StorageLocation.captureFinishedNotification as CFString),
                 nil, nil, true)
         } catch {
-            NSLog("SlowDown capture couldn't be saved: \(error)")
+            NSLog("Slow Down Buddy capture couldn't be saved: \(error)")
         }
     }
 }

@@ -79,7 +79,7 @@ final class MicRecorder {
 
         var errorDescription: String? {
             switch self {
-            case .permissionDenied: "Microphone access is off. Turn it on for SlowDown in Settings › Privacy & Security › Microphone."
+            case .permissionDenied: "Microphone access is off. Turn it on for Slow Down Buddy in Settings › Privacy & Security › Microphone."
             case .couldNotStart: "Recording couldn't start."
             }
         }

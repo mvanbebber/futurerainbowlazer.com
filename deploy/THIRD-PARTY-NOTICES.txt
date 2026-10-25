@@ -1,4 +1,4 @@
-SlowDown web app bundles the following open-source software.
+Slow Down Buddy web app bundles the following open-source software.
 
 Signalsmith Stretch 1.3.2 (inlined in index.html)
   https://signalsmith-audio.co.uk/code/stretch/

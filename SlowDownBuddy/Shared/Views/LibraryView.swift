@@ -58,7 +58,7 @@ struct LibraryView: View {
                 .background(.bar)
             }
         }
-        .navigationTitle("SlowDown")
+        .navigationTitle("Slow Down Buddy")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {

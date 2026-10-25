@@ -2,7 +2,7 @@ import AVFoundation
 import SwiftUI
 
 @main
-struct SlowDownApp: App {
+struct SlowDownBuddyApp: App {
     @State private var library = Library()
 
     init() {

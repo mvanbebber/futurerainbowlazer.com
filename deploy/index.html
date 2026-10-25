@@ -11,12 +11,12 @@
   [hidden] { display: none !important; }
 </style>
 <!-- app:head -->
-<title>SlowDown</title>
+<title>Slow Down Buddy</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="SlowDown">
+<meta name="apple-mobile-web-app-title" content="Slow Down Buddy">
 <style>
   /* Layout: a full-screen tool: toolbar, marker strip, waveform (takes the spare height), scrollbar, keyboard,
      control bar, and a tabbed tool panel at the bottom. Deliberately one light "studio software" look in every theme. */
@@ -390,7 +390,7 @@
       <div class="tg">
         <button class="tb" type="button" data-open="keys" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>
       </div>
-      <span class="doc-title" id="winTitle">SlowDown</span>
+      <span class="doc-title" id="winTitle">Slow Down Buddy</span>
     </div>
 
     <div class="ruler-wrap">
@@ -1063,6 +1063,7 @@ const Store = {
   async open() {
     try {
       this.db = await new Promise((resolve, reject) => {
+        // Storage names keep the original 'slowdown' prefix so existing libraries carry over after the rename.
         const req = indexedDB.open('slowdown', 1);
         req.onupgradeneeded = () => {
           req.result.createObjectStore('songs', { keyPath: 'id' });
@@ -2067,7 +2068,7 @@ function seek(t) { engine.seek(t); followView(true); dirtyWave = true; }
 function renderAll() {
   renderLibrary();
   $('#songTitle').value = current.title;
-  $('#winTitle').textContent = 'SlowDown – ' + current.title;
+  $('#winTitle').textContent = 'Slow Down Buddy – ' + current.title;
   document.querySelectorAll('input[name=channelMode]').forEach((r) => { r.checked = r.value === S().mode; r.disabled = !engine.stereo && r.value !== 'stereo'; });
   renderSpeedPitch(); renderLoop(); renderMarkers(); renderLoops(); renderEQ();
   lastMarkerId = undefined;
@@ -2599,7 +2600,7 @@ async function startCapture(kind) {
   let stream;
   try {
     if (kind === 'tab') {
-      if (!navigator.mediaDevices.getDisplayMedia) { toast('Phones and this browser can’t capture another tab. Use Chrome or Edge on a computer, or the SlowDown iPhone app.', 8000); return; }
+      if (!navigator.mediaDevices.getDisplayMedia) { toast('Phones and this browser can’t capture another tab. Use Chrome or Edge on a computer, or the Slow Down Buddy iPhone app.', 8000); return; }
       stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, systemAudio: 'include', selfBrowserSurface: 'exclude', preferCurrentTab: false });
       if (!stream.getAudioTracks().length) {
         stream.getTracks().forEach((t) => t.stop());
@@ -2610,7 +2611,7 @@ async function startCapture(kind) {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     }
   } catch (e) {
-    if (e && e.name === 'NotAllowedError') toast('Recording was blocked. Allow it when the browser asks. Inside the Claude preview, recording is switched off; open SlowDown from your own site to record.', 9000);
+    if (e && e.name === 'NotAllowedError') toast('Recording was blocked. Allow it when the browser asks. Inside the Claude preview, recording is switched off; open Slow Down Buddy from your own site to record.', 9000);
     else toast('Recording couldn’t start: ' + (e && e.message ? e.message : 'unknown error'), 7000);
     return;
   }
@@ -2794,7 +2795,7 @@ async function saveFile(filename, blob) {
       await downloads.save({ filename, data: blob });
       toast('Backup saved: ' + filename);
     } catch (e) {
-      toast(e && e.code === 'declined' ? 'Backup not saved.' : 'The backup couldn’t be saved here. Open SlowDown from your own site to back up.', 7000);
+      toast(e && e.code === 'declined' ? 'Backup not saved.' : 'The backup couldn’t be saved here. Open Slow Down Buddy from your own site to back up.', 7000);
     }
     return;
   }
@@ -2813,7 +2814,7 @@ async function backupLibrary() {
   btn.disabled = true; btn.textContent = 'Preparing…';
   try {
     if (current && current.source !== 'example') { current.settings.pos = engine.currentTime(); await Store.putSong(current); }
-    const manifest = { app: 'SlowDown', version: 1, exportedAt: new Date().toISOString(), songs: [] };
+    const manifest = { app: 'SlowDownBuddy', version: 1, exportedAt: new Date().toISOString(), songs: [] };
     const entries = [];
     for (const song of list) {
       const blob = await Store.getAudio(song.id);
@@ -2825,7 +2826,7 @@ async function backupLibrary() {
     entries.unshift({ name: 'manifest.json', blob: new Blob([JSON.stringify(manifest, null, 1)], { type: 'application/json' }) });
     const zip = await makeZip(entries);
     const d = new Date(), pad = (n) => String(n).padStart(2, '0');
-    await saveFile('SlowDown backup ' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.zip', zip);
+    await saveFile('Slow Down Buddy backup ' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.zip', zip);
   } catch (e) {
     toast('Backup failed: ' + (e && e.message ? e.message : 'unknown error'), 7000);
   } finally {
@@ -2840,9 +2841,10 @@ async function restoreBackup(file) {
   try {
     const zip = await readZip(file);
     const manifestBlob = await zip.get('manifest.json');
-    if (!manifestBlob) throw new Error('This file isn’t a SlowDown backup.');
+    if (!manifestBlob) throw new Error('This file isn’t a Slow Down Buddy backup.');
     const manifest = JSON.parse(await manifestBlob.text());
-    if (manifest.app !== 'SlowDown' || !Array.isArray(manifest.songs)) throw new Error('This file isn’t a SlowDown backup.');
+    // Backups made before the rename say 'SlowDown'.
+    if (!['SlowDownBuddy', 'SlowDown'].includes(manifest.app) || !Array.isArray(manifest.songs)) throw new Error('This file isn’t a Slow Down Buddy backup.');
     let added = 0, updated = 0, failed = 0, currentChanged = false;
     for (const rec of manifest.songs) {
       const { audioFile, audioType, ...song } = rec;
@@ -2982,7 +2984,7 @@ function wire() {
   $('#panelClose').addEventListener('click', hidePanel);
   $('#songTitle').addEventListener('input', (e) => {
     current.title = e.target.value || 'Untitled';
-    $('#winTitle').textContent = 'SlowDown – ' + current.title;
+    $('#winTitle').textContent = 'Slow Down Buddy – ' + current.title;
     saveSoon(); renderLibrary();
   });
   document.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => addMarker(b.dataset.add)));

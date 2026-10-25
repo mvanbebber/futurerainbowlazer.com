@@ -1,15 +1,15 @@
 import Foundation
 
-/// Where SlowDown keeps its files.
+/// Where Slow Down Buddy keeps its files.
 ///
 /// On iOS everything lives in the shared App Group container so the ReplayKit
 /// broadcast extension can drop finished captures where the app will find them.
 /// On macOS the (sandboxed) Application Support folder is used.
 enum StorageLocation {
-    static let appGroupID = "group.com.futurerainbowlazer.slowdown"
+    static let appGroupID = "group.com.futurerainbowlazer.slowdownbuddy"
 
     /// Darwin notification posted by the broadcast extension when a capture is ready.
-    static let captureFinishedNotification = "com.futurerainbowlazer.slowdown.captureFinished"
+    static let captureFinishedNotification = "com.futurerainbowlazer.slowdownbuddy.captureFinished"
 
     static var root: URL {
         #if os(iOS)
@@ -18,7 +18,7 @@ enum StorageLocation {
         }
         #endif
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return directory(support.appendingPathComponent("SlowDown", isDirectory: true))
+        return directory(support.appendingPathComponent("SlowDownBuddy", isDirectory: true))
     }
 
     /// Imported and captured recordings.

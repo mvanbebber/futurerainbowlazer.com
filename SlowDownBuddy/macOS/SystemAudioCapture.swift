@@ -13,7 +13,7 @@ final class SystemAudioCapture {
     }
 
     private(set) var apps: [AppChoice] = []
-    /// nil records everything the Mac plays (except SlowDown itself).
+    /// nil records everything the Mac plays (except Slow Down Buddy itself).
     var selectedAppID: String?
     private(set) var isRecording = false
     private(set) var elapsed: TimeInterval = 0
@@ -141,7 +141,7 @@ final class SystemAudioCapture {
         return url
     }
 
-    static let permissionHint = "SlowDown needs permission to record system audio. Open System Settings › Privacy & Security › Screen & System Audio Recording, turn SlowDown on, then quit and reopen SlowDown."
+    static let permissionHint = "Slow Down Buddy needs permission to record system audio. Open System Settings › Privacy & Security › Screen & System Audio Recording, turn Slow Down Buddy on, then quit and reopen Slow Down Buddy."
 
     enum CaptureError: LocalizedError {
         case noDisplay
@@ -152,7 +152,7 @@ final class SystemAudioCapture {
 
 /// Receives ScreenCaptureKit buffers on a background queue and writes the audio.
 private final class CaptureSink: NSObject, SCStreamOutput, SCStreamDelegate {
-    let queue = DispatchQueue(label: "com.futurerainbowlazer.slowdown.capture")
+    let queue = DispatchQueue(label: "com.futurerainbowlazer.slowdownbuddy.capture")
     private let writer: CaptureFileWriter
     private var lastLevelUpdate = Date.distantPast
     var onLevel: ((Float) -> Void)?

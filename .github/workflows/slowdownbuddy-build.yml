@@ -1,13 +1,13 @@
-name: SlowDown build
+name: Slow Down Buddy build
 
 on:
   push:
     paths:
-      - "SlowDown/**"
-      - ".github/workflows/slowdown-build.yml"
+      - "SlowDownBuddy/**"
+      - ".github/workflows/slowdownbuddy-build.yml"
   pull_request:
     paths:
-      - "SlowDown/**"
+      - "SlowDownBuddy/**"
   workflow_dispatch:
 
 jobs:
@@ -17,13 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - scheme: SlowDown-macOS
+          - scheme: SlowDownBuddy-macOS
             destination: generic/platform=macOS
-          - scheme: SlowDown-iOS
+          - scheme: SlowDownBuddy-iOS
             destination: generic/platform=iOS Simulator
     defaults:
       run:
-        working-directory: SlowDown
+        working-directory: SlowDownBuddy
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
@@ -34,7 +34,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild build \
-            -project SlowDown.xcodeproj \
+            -project SlowDownBuddy.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
             -destination "${{ matrix.destination }}" \
             CODE_SIGNING_ALLOWED=NO \

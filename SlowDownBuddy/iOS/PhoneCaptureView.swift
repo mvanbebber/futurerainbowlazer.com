@@ -15,7 +15,7 @@ struct PhoneCaptureView: View {
                         .font(.headline)
 
                     VStack(alignment: .leading, spacing: 14) {
-                        step(1, "Tap the record button below and choose **SlowDown Capture**, then **Start Broadcast**.")
+                        step(1, "Tap the record button below and choose **Slow Down Buddy Capture**, then **Start Broadcast**.")
                         step(2, "Switch to YouTube, Spotify or another app and play the song.")
                         step(3, "Come back and tap the button again — or tap the red status-bar pill — to stop.")
                         step(4, "The recording appears at the top of your library.")
@@ -80,11 +80,11 @@ struct PhoneCaptureView: View {
     }
 }
 
-/// Apple's system broadcast picker, preset to SlowDown's extension so one tap starts capturing.
+/// Apple's system broadcast picker, preset to Slow Down Buddy's extension so one tap starts capturing.
 struct BroadcastPickerButton: UIViewRepresentable {
     func makeUIView(context: Context) -> RPSystemBroadcastPickerView {
         let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 80, height: 80))
-        picker.preferredExtension = (Bundle.main.bundleIdentifier ?? "com.futurerainbowlazer.slowdown") + ".Broadcast"
+        picker.preferredExtension = (Bundle.main.bundleIdentifier ?? "com.futurerainbowlazer.slowdownbuddy") + ".Broadcast"
         picker.showsMicrophoneButton = false
         for case let button as UIButton in picker.subviews {
             button.imageView?.tintColor = .systemRed

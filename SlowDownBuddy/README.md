@@ -1,12 +1,12 @@
-# SlowDown: music transcription practice for Mac and iPhone
+# Slow Down Buddy: music transcription practice for Mac and iPhone
 
-SlowDown copies the core of [Transcribe!](https://www.seventhstring.com/xscribe/overview.html): load a song,
+Slow Down Buddy copies the core of [Transcribe!](https://www.seventhstring.com/xscribe/overview.html): load a song,
 slow it down without changing the pitch, loop the hard bit, mark the bars, and work out the notes.
 It's a native SwiftUI app for macOS 14+ and iOS 17+ that shares one codebase.
 
 ## Features
 
-| Transcribe! feature | SlowDown |
+| Transcribe! feature | Slow Down Buddy |
 | --- | --- |
 | Slow down without changing pitch | 25 % – 200 % speed, with ±5 % steps and presets (50, 60, 70, 75, 80, 90, 100 %) |
 | Transpose / fine tune | ±24 semitones, ±50 cents fine tuning (for recordings that aren't at A440), speed unchanged |
@@ -27,19 +27,19 @@ audio track is extracted and stored as AAC.
 You can add files by:
 - **+ › Import Audio or Video…** (Files app / Finder, iCloud Drive, etc.)
 - dragging files onto the library (Mac, iPad)
-- **Open in / Share › SlowDown** from other apps, such as Voice Memos › Share, Files or Mail
+- **Open in / Share › Slow Down Buddy** from other apps, such as Voice Memos › Share, Files or Mail
 
 ### Capturing YouTube, Spotify and other apps
 
 **Mac:** **+ › Capture Audio From an App…** lists the running apps. Pick a browser for YouTube, or Spotify,
-Music and so on, then press **Record** and play the song. SlowDown uses ScreenCaptureKit to record only that
+Music and so on, then press **Record** and play the song. Slow Down Buddy uses ScreenCaptureKit to record only that
 app's audio, digitally, with no microphone and no other apps' sounds. The first time, macOS asks for
 *Screen & System Audio Recording* permission (System Settings › Privacy & Security). After granting it,
-reopen SlowDown.
+reopen Slow Down Buddy.
 
-**iPhone / iPad:** iOS doesn't let one app record another directly, so SlowDown includes a ReplayKit
-broadcast extension, *SlowDown Capture*. Open **+ › Capture Audio From an App…**, tap the record button,
-choose *SlowDown Capture*, then **Start Broadcast**. Switch to YouTube or Spotify and play, then stop from
+**iPhone / iPad:** iOS doesn't let one app record another directly, so Slow Down Buddy includes a ReplayKit
+broadcast extension, *Slow Down Buddy Capture*. Open **+ › Capture Audio From an App…**, tap the record button,
+choose *Slow Down Buddy Capture*, then **Start Broadcast**. Switch to YouTube or Spotify and play, then stop from
 the red status-bar pill or the same button. The extension saves only the app audio (no video, no
 microphone) into the shared App Group, and the recording appears in the library when you return.
 Apps that mark their audio as protected, such as Apple Music, come out silent. For those, use
@@ -67,22 +67,22 @@ The Xcode project is generated from `project.yml` with [XcodeGen](https://github
 
 ```sh
 brew install xcodegen
-cd SlowDown
+cd SlowDownBuddy
 xcodegen generate
-open SlowDown.xcodeproj
+open SlowDownBuddy.xcodeproj
 ```
 
 Then in Xcode:
 
-1. Select your team under **Signing & Capabilities** for all three targets (`SlowDown-macOS`, `SlowDown-iOS`,
-   `SlowDownBroadcast`). You can also set `DEVELOPMENT_TEAM` in `project.yml`.
-2. If `com.futurerainbowlazer.slowdown` is unavailable to your team, change the bundle IDs in `project.yml`.
+1. Select your team under **Signing & Capabilities** for all three targets (`SlowDownBuddy-macOS`, `SlowDownBuddy-iOS`,
+   `SlowDownBuddyBroadcast`). You can also set `DEVELOPMENT_TEAM` in `project.yml`.
+2. If `com.futurerainbowlazer.slowdownbuddy` is unavailable to your team, change the bundle IDs in `project.yml`.
    The broadcast extension must stay `<app id>.Broadcast`. Also change the App Group
-   (`group.com.futurerainbowlazer.slowdown`) in `project.yml` and in `Shared/Support/StorageLocation.swift`.
-3. Run **SlowDown-macOS** on "My Mac", or **SlowDown-iOS** on an iPhone. The broadcast extension only works on a
+   (`group.com.futurerainbowlazer.slowdownbuddy`) in `project.yml` and in `Shared/Support/StorageLocation.swift`.
+3. Run **SlowDownBuddy-macOS** on "My Mac", or **SlowDownBuddy-iOS** on an iPhone. The broadcast extension only works on a
    real device, not in the Simulator.
 
-CI (`.github/workflows/slowdown-build.yml`) builds both apps on every push without code signing.
+CI (`.github/workflows/slowdownbuddy-build.yml`) builds both apps on every push without code signing.
 
 ## How it works
 
