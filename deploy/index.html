@@ -73,8 +73,6 @@
   .tb:active, .tb.on { background: linear-gradient(var(--btn-on-top), var(--btn-on-bottom)); color: #fff; border-color: #333; }
   .tb svg { width: 22px; height: 22px; }
   .tb.sp { min-width: 46px; font-size: 14px; }
-  .tb.deco { cursor: default; }
-  .tb.deco:hover { background: linear-gradient(var(--btn-top), var(--btn-bottom)); }
   .tb .ab { font-size: 13px; line-height: 1; }
 
   .ruler { display: block; width: 100%; height: 50px; background: linear-gradient(#fbfbfb, #dedede); border-bottom: 1px solid var(--line-soft); cursor: pointer; }
@@ -296,7 +294,7 @@
         <button class="tb" type="button" id="zoomAll" title="Show the whole song" aria-label="Whole song"><svg><use href="#i-zoomall"/></svg></button>
       </div>
       <div class="tg" id="speedPresets">
-        <span class="tb deco" title="Playback speed presets" aria-hidden="true"><svg><use href="#i-runner"/></svg></span>
+        <button class="tb" type="button" id="speedToggle" title="Switch between full speed and your practice speed" aria-label="Full speed / practice speed" aria-pressed="false"><svg><use href="#i-runner"/></svg></button>
       </div>
       <div class="tg">
         <button class="tb" type="button" data-open="fx" title="Channels: mono, left, right, karaoke" aria-label="Channels and karaoke">Fx</button>
@@ -439,7 +437,7 @@
         <kbd>A</kbd> <kbd>B</kbd> loop start / end at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
         <kbd>S</kbd> section · <kbd>M</kbd> measure · <kbd>N</kbd> beat marker, tapped along while it plays<br>
         <kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Y</kbd> redo · drag a loop's middle to move it, its edges to resize it<br>
-        <kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> speed ±5% · <kbd>+</kbd> <kbd>−</kbd> zoom · ⌘/Ctrl + scroll or pinch on the waveform to zoom
+        <kbd>T</kbd> full speed / practice speed · <kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> speed ±5% · <kbd>+</kbd> <kbd>−</kbd> zoom · ⌘/Ctrl + scroll or pinch on the waveform to zoom
       </p>
     </div>
   </section>
@@ -1812,6 +1810,11 @@ function renderSpeedPitch() {
   $('#speed').value = speedToSlider(st.speed);
   $('#speedOut').textContent = pct + '%';
   document.querySelectorAll('#speedPresets .sp').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === pct));
+  if (st.speed !== 1) practiceSpeed = st.speed;
+  const slowed = st.speed !== 1, toggle = $('#speedToggle');
+  toggle.classList.toggle('on', slowed);
+  toggle.setAttribute('aria-pressed', String(slowed));
+  toggle.title = slowed ? 'Playing at ' + pct + '%. Click for full speed (T).' : 'Playing at full speed. Click for your practice speed, ' + Math.round(practiceSpeed * 100) + '% (T).';
   // ♯2 = two semitones up, ♭3 = three down, a green 0 = the original key.
   $('#pitchOut').textContent = st.semis > 0 ? '♯' + st.semis : st.semis < 0 ? '♭' + -st.semis : '0';
   $('#pitchOut').classList.toggle('orig', st.semis === 0);
@@ -1862,7 +1865,14 @@ const sliderToSpeed = (v) => (v <= 0 ? 1 + (v / 100) * 0.75 : 1 + v / 100);
 const speedToSlider = (sp) => Math.round(sp <= 1 ? ((sp - 1) / 0.75) * 100 : (sp - 1) * 100);
 
 function setEQ(i, g) { S().eq[i] = g; engine.setEQ(i, g); saveSoon(); }
-function setSpeed(v) { S().speed = clamp(Math.round(v * 100) / 100, 0.25, 2); engine.speed = S().speed; saveSoon(); renderSpeedPitch(); }
+function setSpeed(v) {
+  S().speed = clamp(Math.round(v * 100) / 100, 0.25, 2);
+  if (S().speed !== 1) practiceSpeed = S().speed;
+  engine.speed = S().speed; saveSoon(); renderSpeedPitch();
+}
+// The running-man button flips between full speed and the last speed you practised at (70% to start with).
+let practiceSpeed = 0.7;
+function toggleFullSpeed() { setSpeed(S().speed !== 1 ? 1 : practiceSpeed); }
 function setPitch(semis, cents) {
   S().semis = clamp(semis, -24, 24); S().cents = clamp(cents, -50, 50);
   engine.setPitch(S().semis * 100 + S().cents); saveSoon(); renderSpeedPitch(); lastNotesAt = -1;
@@ -2574,6 +2584,7 @@ function wire() {
   });
 
   // toolbar
+  $('#speedToggle').addEventListener('click', toggleFullSpeed);
   $('#undoBtn').addEventListener('click', undo);
   $('#redoBtn').addEventListener('click', redo);
   $('#tbBackup').addEventListener('click', backupLibrary);
@@ -2961,6 +2972,7 @@ function wire() {
     else if (k === 'a' || k === 'A') setA();
     else if (k === 'b' || k === 'B') setB();
     else if (k === 'l' || k === 'L') toggleLoop();
+    else if (k === 't' || k === 'T') toggleFullSpeed();
     else if (k === 'm' || k === 'M') addMarker('measure');
     else if (k === 's' || k === 'S') addMarker('section');
     else if (k === 'n' || k === 'N') addMarker('beat');
