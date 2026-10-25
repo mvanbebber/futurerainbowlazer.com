@@ -1932,18 +1932,6 @@ function drawWave(now) {
       g.fillStyle = selection || l.on ? C['sel-bg'] : C['sel-bg-off']; g.fillRect(a, 0, b - a, H);
       drawLanes(g, W, H, C['sel-wave']);
       g.restore();
-      // Edge handles: a bright line with a grip in the middle, so the edges read as draggable.
-      if (!selection) {
-        for (const ex of [x(band[0]), x(band[1])]) {
-          if (ex < -4 * dpr || ex > W + 4 * dpr) continue;
-          g.fillStyle = 'rgba(255, 255, 255, 0.9)';
-          g.fillRect(Math.round(ex - dpr), 0, 2 * dpr, H);
-          g.fillStyle = '#ffffff'; g.strokeStyle = C['sel-bg']; g.lineWidth = dpr;
-          g.beginPath(); g.rect(Math.round(ex - 4 * dpr) + 0.5, H / 2 - 14 * dpr, 8 * dpr, 28 * dpr); g.fill(); g.stroke();
-          g.fillStyle = C['sel-bg'];
-          for (let k = -1; k <= 1; k++) g.fillRect(Math.round(ex - 2 * dpr), H / 2 + k * 6 * dpr, 4 * dpr, dpr);
-        }
-      }
     }
   }
   for (const m of current.markers) {
