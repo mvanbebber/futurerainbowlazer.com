@@ -158,14 +158,18 @@
   .text-input, select { min-height: 28px; border-radius: 5px; border: 1px solid #a8a8a8; background: #fff; padding: 0 8px; min-width: 0; }
   .text-input { flex: 1 1 180px; }
 
-  .songs { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; max-height: 320px; overflow: auto; background: #fff; border: 1px solid var(--line-soft); border-radius: 6px; }
+  .library-body { grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); align-items: start; }
+  .library-side { display: grid; gap: 10px; min-width: 0; }
+  @media (max-width: 760px) { .library-body { grid-template-columns: minmax(0, 1fr); } }
+  /* Rows are about 29px, so the list always has room for at least five songs. */
+  .songs { list-style: none; margin: 0; padding: 0; display: grid; align-content: start; min-height: 152px; max-height: 300px; overflow: auto; background: #fff; border: 1px solid var(--line-soft); border-radius: 6px; }
   .song { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-bottom: 1px solid #eee; }
   .song:last-child { border-bottom: 0; }
-  .song > button.pick { text-align: left; background: none; border: 0; padding: 7px 10px; cursor: pointer; min-width: 0; }
-  .song > button.pick:hover { background: #f1f4fb; }
-  .song.active > button.pick { background: #dbe5fb; }
-  .song .name { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .song .meta { display: block; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .song > button.pick { display: flex; align-items: baseline; gap: 10px; text-align: left; background: none; border: 0; padding: 5px 10px; cursor: pointer; min-width: 0; }
+  .song:hover { background: #f1f4fb; }
+  .song.active { background: #dbe5fb; }
+  .song .name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .song .meta { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .song .del { opacity: 0; }
   .song:hover .del, .song .del:focus-visible { opacity: 1; }
   @media (hover: none) { .song .del { opacity: 1; } }
@@ -300,7 +304,7 @@
         <button class="tb" type="button" data-open="fx" title="Channels: mono, left, right, karaoke" aria-label="Channels and karaoke">Fx</button>
         <button class="tb" type="button" data-open="markers" title="Markers and saved loops" aria-label="Markers and loops"><svg><use href="#i-markers"/></svg></button>
         <button class="tb" type="button" data-open="eq" title="Equalizer" aria-label="EQ">EQ</button>
-        <button class="tb" type="button" id="kbToggle" title="Hide the keyboard" aria-label="Keyboard" aria-pressed="true"><svg><use href="#i-piano-on" id="kbIcon"/></svg></button>
+        <button class="tb on" type="button" id="kbToggle" title="Hide the keyboard" aria-label="Keyboard" aria-pressed="true"><svg><use href="#i-piano-on" id="kbIcon"/></svg></button>
         <button class="tb" type="button" id="viewToggle" title="Bigger waveform (hide the tool panel)" aria-label="Bigger waveform"><svg><use href="#i-expand" id="viewIcon"/></svg></button>
       </div>
       <div class="tg">
@@ -382,9 +386,10 @@
       <button class="ptab close" type="button" id="panelClose" aria-label="Close panel">✕</button>
     </div>
 
-    <div class="pbody" data-panel="library">
-      <div class="row"><label class="small muted" for="songTitle">Title</label><input class="text-input" id="songTitle" value=""></div>
+    <div class="pbody library-body" data-panel="library">
       <ul class="songs" id="songs"></ul>
+      <div class="library-side">
+      <div class="row"><label class="small muted" for="songTitle">Title</label><input class="text-input" id="songTitle" value=""></div>
       <p class="hint" id="libraryHint">Open files with the folder button or drop them anywhere on the page. Songs, loops and markers are kept in this browser.</p>
       <div class="storage">
         <p class="storage-line" id="storageLine">Checking storage…</p>
@@ -393,6 +398,7 @@
           <label class="btn small" for="restoreInput">Restore backup</label>
           <input id="restoreInput" class="visually-hidden" type="file" accept=".zip,application/zip">
         </div>
+      </div>
       </div>
     </div>
 
@@ -2771,6 +2777,7 @@ function wire() {
   const setKeyboardVisible = (on) => {
     $('#keyboard').hidden = !on;
     const b = $('#kbToggle');
+    b.classList.toggle('on', on);
     $('#kbIcon').setAttribute('href', on ? '#i-piano-on' : '#i-piano-off');
     b.setAttribute('aria-pressed', String(on));
     b.title = on ? 'Hide the keyboard' : 'Show the keyboard';
