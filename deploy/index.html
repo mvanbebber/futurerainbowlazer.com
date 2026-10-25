@@ -59,6 +59,10 @@
   body { font-family: var(--ui); font-size: 13px; line-height: 1.4; }
   button, input, select, label.tb { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  /* Joined toolbar buttons and round buttons: draw the focus ring inside, so it can't run into neighbours,
+     and never after a mouse click or tap. */
+  .tb:focus, .round:focus, .mini:focus, .pill:focus { outline: none; }
+  .tb:focus-visible, .round:focus-visible, .mini:focus-visible, .pill:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
 
   .app { height: 100%; display: flex; flex-direction: column; min-width: 0; background: var(--window); }
   .app > * { flex: none; }
@@ -1972,8 +1976,9 @@ async function selectSong(id) {
   applyLoop();
   engine.seek(Math.min(st.pos || 0, engine.duration));
   peaks = computePeaks(buffer);
-  view.span = Math.min(20, engine.duration);
-  view.start = clamp((st.pos || 0) - view.span * 0.1, 0, Math.max(0, engine.duration - view.span));
+  // Songs open zoomed out to the whole file.
+  view.span = engine.duration;
+  view.start = 0;
   clampView();
   lastNotesAt = -1;
   renderAll();
