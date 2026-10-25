@@ -1,0 +1,4 @@
+# Netlify: serve the SlowDown web app as-is. There is no build step.
+[build]
+  publish = "deploy"
+  command = ""
