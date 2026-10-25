@@ -1846,15 +1846,41 @@ async function decodeFlac(bytes) {
   const decoder = new lib.FLACDecoder();
   try {
     await decoder.ready;
-    const { channelData, samplesDecoded, sampleRate } = await decoder.decodeFile(bytes);
-    if (!samplesDecoded || !channelData.length) throw new Error('No audio in FLAC file');
-    const channels = channelData.slice(0, 2);
-    const src = new AudioBuffer({ length: samplesDecoded, numberOfChannels: channels.length, sampleRate });
-    channels.forEach((data, c) => src.copyToChannel(data.subarray(0, samplesDecoded), c));
+    // Feed the file in 1 MB pieces: far less memory than decoding it in one go, which matters on iPhone.
+    const parts = [];
+    let total = 0, rate = 0, channels = 0, lastError = '';
+    const take = (r) => {
+      if (!r) return;
+      if (r.errors && r.errors.length) lastError = String(r.errors[r.errors.length - 1].message || r.errors[r.errors.length - 1].error || '');
+      if (!r.samplesDecoded) return;
+      rate = r.sampleRate || rate;
+      channels = Math.max(channels, Math.min(2, r.channelData.length));
+      parts.push(r);
+      total += r.samplesDecoded;
+    };
+    const CHUNK = 1 << 20;
+    for (let o = 0; o < bytes.length; o += CHUNK) {
+      take(await decoder.decode(bytes.subarray(o, o + CHUNK)));
+      if (bytes.length > 4 * CHUNK) toast('Decoding FLAC… ' + Math.min(99, Math.round(((o + CHUNK) / bytes.length) * 100)) + '%', 3000);
+      await new Promise((r) => setTimeout(r, 0)); // keep the page responsive
+    }
+    take(await decoder.flush());
+    if (!total || !rate) throw new Error('the FLAC decoder found no audio' + (lastError ? ' (' + lastError + ')' : ''));
+    if (rate > 96000) throw new Error(rate / 1000 + ' kHz FLAC is above the 96 kHz this browser supports');
+    const src = new AudioBuffer({ length: total, numberOfChannels: channels, sampleRate: rate });
+    for (let c = 0; c < channels; c++) {
+      let offset = 0;
+      for (const p of parts) {
+        const data = p.channelData[Math.min(c, p.channelData.length - 1)];
+        src.copyToChannel(data.subarray(0, p.samplesDecoded), c, offset);
+        offset += p.samplesDecoded;
+      }
+    }
+    parts.length = 0;
     // The engine plays buffers at the output rate, so convert other rates (e.g. 96 kHz FLAC) first.
     const outRate = engine.context().sampleRate;
-    if (sampleRate === outRate) return src;
-    const oc = new OfflineAudioContext(channels.length, Math.ceil((samplesDecoded * outRate) / sampleRate), outRate);
+    if (rate === outRate) return src;
+    const oc = new OfflineAudioContext(channels, Math.ceil((total * outRate) / rate), outRate);
     const node = oc.createBufferSource();
     node.buffer = src; node.connect(oc.destination); node.start();
     return await oc.startRendering();
@@ -1866,6 +1892,8 @@ async function decodeFlac(bytes) {
 async function decode(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);
   const flac = looksLikeFlac(bytes);
+  // Safari's own decoder (every iPhone/iPad browser) can't be trusted with FLAC: go straight to libFLAC.
+  if (flac && IS_IOS) return decodeFlac(bytes);
   // decodeAudioData takes ownership of its buffer, so give it a copy when a FLAC fallback may be needed.
   try {
     return await decodeNative(flac ? arrayBuffer.slice(0) : arrayBuffer);
@@ -1890,7 +1918,8 @@ async function importBlob(blob, title, source) {
     updateStorage();
     return song;
   } catch (e) {
-    toast('Couldn’t read “' + title + '”. This browser can’t decode that format. Try Chrome, or convert it to WAV, MP3 or M4A.', 7000);
+    const why = e && e.message ? e.message : String(e || 'unknown error');
+    toast('Couldn’t read “' + title + '”: ' + why + '. Try converting it to WAV, MP3 or M4A, and tell us what this message said.', 12000);
     return null;
   } finally {
     $('#waveBusy').hidden = true;
@@ -1921,7 +1950,9 @@ async function selectSong(id) {
       buffers.set(id, buffer);
     } catch (e) {
       $('#waveBusy').hidden = true;
-      toast('That song’s audio is no longer stored in this browser. Import it again.');
+      toast(e && e.message === 'missing'
+        ? 'That song’s audio is no longer stored in this browser. Import it again.'
+        : 'Couldn’t open that song: ' + (e && e.message ? e.message : 'unknown error') + '.', 10000);
       return;
     }
     $('#waveBusy').hidden = true;
