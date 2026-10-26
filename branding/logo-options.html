@@ -5,27 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Logo Options</title>
 <style>
-  :root { --bg: #f2f2f2; --card: #fff; --ink: #222; --muted: #666; --orange: #ff9a1f; --dark: #2b2b2b; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 system-ui, -apple-system, sans-serif; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
-  p.lead { color: var(--muted); margin: 0 0 24px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
-  .card { background: var(--card); border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .card h2 { font-size: 16px; margin: 0 0 2px; }
-  .card .note { color: var(--muted); font-size: 13px; margin: 0 0 14px; min-height: 36px; }
-  .hero { display: flex; justify-content: center; padding: 6px 0 14px; }
-  .hero svg { width: 150px; height: 150px; }
-  .sizes { display: flex; align-items: center; gap: 14px; justify-content: center; padding: 10px; border-radius: 10px; background: #e9e9e9; }
-  .sizes.darkbg { background: #1c1c1c; margin-top: 8px; }
-  .sizes svg:nth-child(1) { width: 16px; height: 16px; }
-  .sizes svg:nth-child(2) { width: 32px; height: 32px; }
-  .sizes svg:nth-child(3) { width: 60px; height: 60px; }
-  .lockup { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-  .lockup svg { width: 40px; height: 40px; flex: none; }
-  .word { font-weight: 800; font-size: 21px; letter-spacing: -.3px; }
-  .word span { color: var(--orange); }
-  .tag { display: inline-block; font-size: 12px; font-weight: 700; background: var(--dark); color: #fff; border-radius: 6px; padding: 1px 7px; margin-right: 6px; }
+  body { margin: 0; background: #f2f2f2; color: #222; font: 15px/1.4 system-ui, -apple-system, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 36px; }
+  h1 { font-size: 24px; margin: 0 0 4px; } p.lead { color: #666; margin: 0 0 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card.cur { box-shadow: 0 0 0 3px #ff9a1f; }
+  .card h2 { font-size: 16px; margin: 0 0 2px; } .note { color: #666; font-size: 13px; margin: 0 0 10px; min-height: 36px; }
+  .hero { display: flex; justify-content: center; padding: 4px 0 12px; } .hero svg { width: 128px; height: 128px; }
+  .sizes { display: flex; align-items: center; gap: 14px; justify-content: center; padding: 9px; border-radius: 10px; background: #e9e9e9; }
+  .sizes svg:nth-child(1) { width: 16px; height: 16px; } .sizes svg:nth-child(2) { width: 32px; height: 32px; } .sizes svg:nth-child(3) { width: 56px; height: 56px; }
+  .lockup { display: flex; align-items: center; gap: 10px; margin-top: 12px; } .lockup svg { width: 38px; height: 38px; flex: none; }
+  .word { font-weight: 800; font-size: 20px; letter-spacing: -.3px; } .word span { color: #ff9a1f; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; background: #2b2b2b; color: #fff; border-radius: 6px; padding: 1px 7px; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -40,7 +32,6 @@
       </g>
       <path d="M46 20 L56 32 L46 44" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     </symbol>
-
     <!-- B: snail whose shell is a spiral -->
     <symbol id="logo-b" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
@@ -51,7 +42,6 @@
       <circle cx="37" cy="29" r="16" fill="#fff"/>
       <path d="M35 29 a2.5 2.5 0 1 1 5 0 a5 5 0 1 1 -10 0 a7.5 7.5 0 1 1 15 0 a10 10 0 1 1 -20 0" fill="none" stroke="#2b2b2b" stroke-width="2.6" stroke-linecap="round"/>
     </symbol>
-
     <!-- C: speed dial turned down to slow -->
     <symbol id="logo-c" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
@@ -64,7 +54,6 @@
         <line x1="32" y1="50" x2="32" y2="58"/><line x1="37" y1="51" x2="37" y2="57"/><line x1="42" y1="53" x2="42" y2="55"/>
       </g>
     </symbol>
-
     <!-- D: waveform whose bars spread out (stretched in time) -->
     <symbol id="logo-d" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="14" fill="#ff9a1f"/>
@@ -74,7 +63,6 @@
         <line x1="41" y1="17" x2="41" y2="47"/><line x1="54" y1="25" x2="54" y2="39"/>
       </g>
     </symbol>
-
     <!-- E: friendly buddy wearing headphones, mouth is a waveform -->
     <symbol id="logo-e" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
@@ -84,7 +72,6 @@
       <circle cx="25.5" cy="31" r="2.6" fill="#2b2b2b"/><circle cx="38.5" cy="31" r="2.6" fill="#2b2b2b"/>
       <path d="M23.5 38.5 Q32 48 40.5 38.5" fill="none" stroke="#2b2b2b" stroke-width="3" stroke-linecap="round"/>
     </symbol>
-
     <!-- F: music note inside a loop arrow -->
     <symbol id="logo-f" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
@@ -94,42 +81,145 @@
       <path d="M34 19 q6 2 7 8" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
       <ellipse cx="29.5" cy="39" rx="5.5" ry="4.3" transform="rotate(-20 29.5 39)" fill="#fff"/>
     </symbol>
-
     <!-- G: SDB monogram with a slow-motion trail -->
     <symbol id="logo-g" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
       <g stroke="#ff9a1f" stroke-width="3" stroke-linecap="round" opacity=".55"><line x1="9" y1="26" x2="14" y2="26"/><line x1="7" y1="32" x2="14" y2="32"/><line x1="9" y1="38" x2="14" y2="38"/></g>
       <text x="37" y="40" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-weight="900" font-size="21" fill="#fff" letter-spacing="-1">SD<tspan fill="#ff9a1f">B</tspan></text>
     </symbol>
+    <!-- H -->
+    <symbol id="logo-h" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <path d="M12 42 a17 15 0 0 1 34 0z" fill="#ff9a1f"/>
+      <circle cx="21" cy="38" r="3" fill="#c96f00"/><circle cx="29" cy="32" r="3.4" fill="#c96f00"/><circle cx="37" cy="38" r="3" fill="#c96f00"/><circle cx="29" cy="40" r="2.2" fill="#c96f00"/>
+      <rect x="14" y="41" width="6" height="7" rx="3" fill="#ff9a1f"/><rect x="36" y="41" width="6" height="7" rx="3" fill="#ff9a1f"/>
+      <circle cx="51" cy="36" r="6" fill="#ff9a1f"/><circle cx="53" cy="34.5" r="1.3" fill="#2b2b2b"/>
+      <path d="M44.5 37 V34 a6.5 6.5 0 0 1 13 0 V37" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      <rect x="43" y="34" width="3.4" height="6" rx="1.7" fill="#fff"/><rect x="55.6" y="34" width="3.4" height="6" rx="1.7" fill="#fff"/>
+      <path d="M8 50 h48" stroke="#555" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <!-- I -->
+    <symbol id="logo-i" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <circle cx="24" cy="22" r="3.4" fill="#fff"/><circle cx="40" cy="22" r="3.4" fill="#fff"/>
+      <g stroke="#ff9a1f" stroke-width="4" stroke-linecap="round"><line x1="14" y1="34.9" x2="14" y2="38.9"/><line x1="20" y1="36.8" x2="20" y2="44.8"/><line x1="26" y1="37.2" x2="26" y2="49.2"/><line x1="32" y1="37.0" x2="32" y2="51.0"/><line x1="38" y1="37.2" x2="38" y2="49.2"/><line x1="44" y1="36.8" x2="44" y2="44.8"/><line x1="50" y1="34.9" x2="50" y2="38.9"/></g>
+    </symbol>
+    <!-- J -->
+    <symbol id="logo-j" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <path d="M38 44 V12 q8 3 10 12" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="45" rx="11" ry="8.5" transform="rotate(-18 29 45)" fill="#ff9a1f"/>
+      <circle cx="25.5" cy="43.5" r="1.6" fill="#2b2b2b"/><circle cx="32" cy="41.5" r="1.6" fill="#2b2b2b"/>
+      <path d="M25 48 q4 3 8 -1.5" fill="none" stroke="#2b2b2b" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <!-- K -->
+    <symbol id="logo-k" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <rect x="8" y="16" width="48" height="32" rx="5" fill="#ff9a1f"/>
+      <rect x="14" y="22" width="36" height="14" rx="7" fill="#2b2b2b"/>
+      <circle cx="22" cy="29" r="4.5" fill="#fff"/><circle cx="42" cy="29" r="4.5" fill="#fff"/>
+      <circle cx="22" cy="29" r="1.5" fill="#2b2b2b"/><circle cx="42" cy="29" r="1.5" fill="#2b2b2b"/>
+      <path d="M26.5 29 h11" stroke="#fff" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <path d="M18 48 l3 -6 h22 l3 6" fill="none" stroke="#2b2b2b" stroke-width="2"/>
+    </symbol>
+    <!-- L -->
+    <symbol id="logo-l" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <circle cx="32" cy="32" r="24" fill="#111"/>
+      <circle cx="32" cy="32" r="19" fill="none" stroke="#333" stroke-width="1"/><circle cx="32" cy="32" r="14" fill="none" stroke="#333" stroke-width="1"/>
+      <circle cx="32" cy="32" r="10" fill="#ff9a1f"/>
+      <text x="32" y="36.5" text-anchor="middle" font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif" font-weight="900" font-size="12" fill="#2b2b2b">½</text>
+    </symbol>
+    <!-- M -->
+    <symbol id="logo-m" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <path d="M22 46 V22 l26 -6 v24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M22 22 l26 -6" stroke="#fff" stroke-width="6"/>
+      <ellipse cx="16.5" cy="46" rx="7" ry="5.5" fill="#ff9a1f"/><ellipse cx="42.5" cy="40" rx="7" ry="5.5" fill="#ff9a1f"/>
+      <circle cx="14.5" cy="45" r="1.2" fill="#2b2b2b"/><circle cx="18.5" cy="45" r="1.2" fill="#2b2b2b"/><path d="M14 48 q2.5 2 5 0" fill="none" stroke="#2b2b2b" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="40.5" cy="39" r="1.2" fill="#2b2b2b"/><circle cx="44.5" cy="39" r="1.2" fill="#2b2b2b"/><path d="M40 42 q2.5 2 5 0" fill="none" stroke="#2b2b2b" stroke-width="1.4" stroke-linecap="round"/>
+    </symbol>
+    <!-- N -->
+    <symbol id="logo-n" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <path d="M18 10 h28 M18 54 h28" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <path d="M21 10 c0 12 9 15 11 22 c2 -7 11 -10 11 -22 M21 54 c0 -12 9 -15 11 -22 c2 7 11 10 11 22" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+      <g stroke="#ff9a1f" stroke-width="2.6" stroke-linecap="round"><line x1="26" y1="47" x2="26" y2="51"/><line x1="30" y1="42" x2="30" y2="51"/><line x1="34" y1="44" x2="34" y2="51"/><line x1="38" y1="47" x2="38" y2="51"/><line x1="32" y1="34" x2="32" y2="38"/></g>
+    </symbol>
+    <!-- O -->
+    <symbol id="logo-o" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#2b2b2b"/>
+      <path d="M8 34 V30 a24 24 0 0 1 48 0 V34" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="5" y="30" width="11" height="20" rx="5" fill="#fff"/><rect x="48" y="30" width="11" height="20" rx="5" fill="#fff"/>
+      <g stroke="#ff9a1f" stroke-width="3" stroke-linecap="round"><line x1="22" y1="37" x2="22" y2="43"/><line x1="27" y1="32" x2="27" y2="48"/><line x1="32" y1="35" x2="32" y2="45"/><line x1="37" y1="30" x2="37" y2="50"/><line x1="42" y1="36" x2="42" y2="44"/></g>
+    </symbol>
   </defs>
 </svg>
-
 <main>
   <h1>Slow Down Buddy logo options</h1>
-  <p class="lead">Each option is shown large, at favicon and home-screen sizes on light and dark, and next to the name. Reply with a letter, or mix and match (for example, "E but with D's orange background").</p>
-  <div class="grid" id="grid"></div>
+  <p class="lead">E (outlined in orange) is the current logo. Each option is shown large, at favicon and home-screen sizes, and next to the name. Reply with a letter, or mix and match.</p>
+  <div class="grid">
+  <div class="card"><h2><span class="tag">A</span>Waveform + play</h2><p class="note">The first site icon.</p>
+    <div class="hero"><svg><use href="#logo-a"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-a"/></svg><svg><use href="#logo-a"/></svg><svg><use href="#logo-a"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-a"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">B</span>Snail</h2><p class="note">Slow and friendly; the shell is a spiral.</p>
+    <div class="hero"><svg><use href="#logo-b"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-b"/></svg><svg><use href="#logo-b"/></svg><svg><use href="#logo-b"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-b"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">C</span>Speed dial</h2><p class="note">A gauge turned down to slow.</p>
+    <div class="hero"><svg><use href="#logo-c"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-c"/></svg><svg><use href="#logo-c"/></svg><svg><use href="#logo-c"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-c"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">D</span>Stretched wave</h2><p class="note">Bars spreading apart: sound stretched in time.</p>
+    <div class="hero"><svg><use href="#logo-d"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-d"/></svg><svg><use href="#logo-d"/></svg><svg><use href="#logo-d"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-d"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card cur"><h2><span class="tag">E</span>Buddy (current)</h2><p class="note">A smiling face in headphones.</p>
+    <div class="hero"><svg><use href="#logo-e"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-e"/></svg><svg><use href="#logo-e"/></svg><svg><use href="#logo-e"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-e"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">F</span>Loop note</h2><p class="note">A music note inside a loop arrow.</p>
+    <div class="hero"><svg><use href="#logo-f"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-f"/></svg><svg><use href="#logo-f"/></svg><svg><use href="#logo-f"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-f"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">G</span>SDB monogram</h2><p class="note">Initials with motion lines.</p>
+    <div class="hero"><svg><use href="#logo-g"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-g"/></svg><svg><use href="#logo-g"/></svg><svg><use href="#logo-g"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-g"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">H</span>Turtle in headphones</h2><p class="note">Slow + buddy: a turtle listening.</p>
+    <div class="hero"><svg><use href="#logo-h"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-h"/></svg><svg><use href="#logo-h"/></svg><svg><use href="#logo-h"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-h"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">I</span>Waveform smile</h2><p class="note">A face whose smile is a waveform.</p>
+    <div class="hero"><svg><use href="#logo-i"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-i"/></svg><svg><use href="#logo-i"/></svg><svg><use href="#logo-i"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-i"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">J</span>Happy note</h2><p class="note">A music note with a face.</p>
+    <div class="hero"><svg><use href="#logo-j"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-j"/></svg><svg><use href="#logo-j"/></svg><svg><use href="#logo-j"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-j"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">K</span>Cassette buddy</h2><p class="note">A tape whose reels are eyes.</p>
+    <div class="hero"><svg><use href="#logo-k"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-k"/></svg><svg><use href="#logo-k"/></svg><svg><use href="#logo-k"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-k"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">L</span>Half-speed record</h2><p class="note">A vinyl record labeled ½.</p>
+    <div class="hero"><svg><use href="#logo-l"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-l"/></svg><svg><use href="#logo-l"/></svg><svg><use href="#logo-l"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-l"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">M</span>Note buddies</h2><p class="note">Two joined notes with faces: practice pals.</p>
+    <div class="hero"><svg><use href="#logo-m"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-m"/></svg><svg><use href="#logo-m"/></svg><svg><use href="#logo-m"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-m"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">N</span>Hourglass</h2><p class="note">Time slowing down, with a waveform as the sand.</p>
+    <div class="hero"><svg><use href="#logo-n"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-n"/></svg><svg><use href="#logo-n"/></svg><svg><use href="#logo-n"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-n"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  <div class="card"><h2><span class="tag">O</span>Headphones + wave</h2><p class="note">Headphones with a waveform between them.</p>
+    <div class="hero"><svg><use href="#logo-o"/></svg></div>
+    <div class="sizes"><svg><use href="#logo-o"/></svg><svg><use href="#logo-o"/></svg><svg><use href="#logo-o"/></svg></div>
+    <div class="lockup"><svg><use href="#logo-o"/></svg><div class="word">Slow Down <span>Buddy</span></div></div></div>
+  </div>
 </main>
-
-<script>
-  const options = [
-    ['a', 'Waveform + play', 'The current favicon. Simple and reads well tiny, but generic.'],
-    ['b', 'Snail', 'Slow, friendly and memorable; the spiral shell nods to looping.'],
-    ['c', 'Speed dial', 'A gauge turned down to slow, with a little waveform underneath.'],
-    ['d', 'Stretched wave', 'Bars spread apart left to right: sound stretched in time. Bold orange tile.'],
-    ['e', 'Buddy', 'A smiling face in headphones. The most "buddy".'],
-    ['f', 'Loop note', 'A music note inside a loop arrow: practice a passage over and over.'],
-    ['g', 'SDB monogram', 'Initials with motion lines. Clean, but less descriptive.'],
-  ];
-  const use = (id) => `<svg><use href="#logo-${id}"/></svg>`;
-  document.getElementById('grid').innerHTML = options.map(([id, name, note]) => `
-    <div class="card">
-      <h2><span class="tag">${id.toUpperCase()}</span>${name}</h2>
-      <p class="note">${note}</p>
-      <div class="hero">${use(id)}</div>
-      <div class="sizes">${use(id)}${use(id)}${use(id)}</div>
-      <div class="sizes darkbg">${use(id)}${use(id)}${use(id)}</div>
-      <div class="lockup">${use(id)}<div class="word">Slow Down <span>Buddy</span></div></div>
-    </div>`).join('');
-</script>
 </body>
 </html>
