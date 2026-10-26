@@ -715,6 +715,10 @@ function registerWorkletProcessor(Module, audioNodeKey) {
 					
 					return obj;
 				},
+				// Attack-preserving timing (added for Slow Down Buddy): {x, a, b, end, maxRate} or null. See warpAt().
+				setWarp: warp => {
+					this.warp = warp && warp.x.length ? warp : null;
+				},
 				dropBuffers: toSeconds => {
 					if (typeof toSeconds !== 'number') {
 						let buffers = this.audioBuffers.flat(1).map(b => b.buffer);
@@ -786,6 +790,22 @@ function registerWorkletProcessor(Module, audioNodeKey) {
 			});
 		}
 		
+		// When slowed down a lot, a drum hit stays inside the analysis window for a long time and gets smeared into a
+		// swell. So around each attack x[i] the input runs at normal speed (from x - a to x + b), and the stretch in
+		// between gets a little slower to make up for it. Nominal time u maps to actual input time; at u = x[i] the
+		// attack itself plays, so the playhead stays in sync. Returns [input time, input rate].
+		warpAt(u, r) {
+			let {x, a, b, end} = this.warp, n = x.length;
+			let lo = 0, hi = n;
+			while (lo < hi) { let m = (lo + hi) >> 1; if (x[m] - a[m]*r <= u) lo = m + 1; else hi = m; }
+			let k = lo;
+			if (k > 0 && u <= x[k - 1] + b[k - 1]*r) return [x[k - 1] + (u - x[k - 1])/r, 1];
+			let u0 = k > 0 ? x[k - 1] + b[k - 1]*r : 0, x0 = k > 0 ? x[k - 1] + b[k - 1] : 0;
+			let u1 = k < n ? x[k] - a[k]*r : end, x1 = k < n ? x[k] - a[k] : end;
+			if (u < u0 || u >= u1) return [u, r];
+			let s = (x1 - x0)/(u1 - u0);
+			return [x0 + (u - u0)*s, r*s];
+		}
 		config = {
 			preset: 'default'
 		};
@@ -881,6 +901,12 @@ function registerWorkletProcessor(Module, audioNodeKey) {
 					inputTime -= loopLength;
 				}
 				
+				let reportTime = inputTime, seekRate = currentMapSegment.rate;
+				if (this.warp && seekRate > 0 && seekRate < this.warp.maxRate) {
+					let w = this.warpAt(inputTime, seekRate);
+					inputTime = w[0];
+					seekRate = w[1];
+				}
 				inputTime += this.inputLatencySeconds;
 				let inputSamplesEnd = Math.round(inputTime*sampleRate);
 
@@ -920,13 +946,13 @@ function registerWorkletProcessor(Module, audioNodeKey) {
 				}
 
 				// constantly seeking, so we don't have to worry about the input buffers needing to be a rate-dependent size
-				wasmModule._seek(this.bufferLength, currentMapSegment.rate);
+				wasmModule._seek(this.bufferLength, seekRate);
 				wasmModule._process(0, outputBlockSize);
 
 				this.timeIntervalCounter -= outputBlockSize;
 				if (this.timeIntervalCounter <= 0) {
 					this.timeIntervalCounter = this.timeIntervalSamples;
-					this.port.postMessage(['time', inputTime]);
+					this.port.postMessage(['time', reportTime]);
 				}
 			}
 			
@@ -1196,6 +1222,7 @@ class Engine {
       this.node = node;
       this.hqSilentChecks = 0;
       if (this.buffer) this.pushBuffers();
+      if (this.warp) node.setWarp(this.warp);
       if (wasPlaying) { this.anchor = pos; await this.play(); }
       return true;
     } catch (e) {
@@ -1285,9 +1312,23 @@ class Engine {
     this.anchor = 0;
     this.setMode(mode || 'stereo');
     this.reset(0);
+    this.findAttacks();
   }
 
   get duration() { return this.len / this.sr; }
+
+  // Find the song's attacks in the background, then hand them to the stretcher (used at slow speeds).
+  findAttacks() {
+    const token = (this.warpToken = (this.warpToken || 0) + 1);
+    this.warp = null;
+    if (this.node) this.node.setWarp(null);
+    const buffer = this.buffer;
+    detectOnsets(this.mix, this.sr).then((onsets) => {
+      if (token !== this.warpToken || buffer !== this.buffer) return;
+      this.warp = attackWarp(onsets, this.duration);
+      if (this.node) this.node.setWarp(this.warp);
+    }, () => {});
+  }
 
   setMode(mode) {
     if (!this.stereo) mode = 'stereo';
@@ -1540,8 +1581,9 @@ function computePeaks(buffer) {
 }
 
 const FFT_SIZE = 32768;
-const fft = (() => {
-  const n = FFT_SIZE, levels = Math.log2(n);
+const ATTACK_WARP_BELOW = 0.45; // speeds below this keep drum and note attacks crisp (see warpAt in the stretcher)
+function makeMagnitudeFFT(n) {
+  const levels = Math.log2(n);
   const rev = new Uint32Array(n);
   for (let i = 0; i < n; i++) { let r = 0; for (let b = 0; b < levels; b++) r |= ((i >> b) & 1) << (levels - 1 - b); rev[i] = r; }
   const cos = new Float32Array(n / 2), sin = new Float32Array(n / 2);
@@ -1568,7 +1610,49 @@ const fft = (() => {
     for (let i = 0; i < n / 2; i++) mags[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
     return mags;
   };
-})();
+}
+const fft = makeMagnitudeFFT(FFT_SIZE);
+
+// Attacks (drum hits, plucks, piano notes): peaks of spectral flux above 150 Hz, against a local average.
+// Runs at half the sample rate in small slices so the page stays responsive. Returns times in seconds.
+async function detectOnsets(signal, sr) {
+  const N = 512, hop = 256, rate = sr / 2, mag = makeMagnitudeFFT(N);
+  const half = new Float32Array(signal.length >> 1);
+  for (let i = 0; i < half.length; i++) half[i] = (signal[2 * i] + signal[2 * i + 1]) * 0.5;
+  const frames = Math.floor((half.length - N) / hop);
+  if (frames < 4) return [];
+  const lo = Math.ceil(150 / (rate / N)), flux = new Float32Array(frames);
+  let prev = null;
+  for (let f = 0; f < frames; f++) {
+    const m = mag(half, f * hop);
+    for (let k = lo; k < N / 2; k++) m[k] = Math.log1p(100 * m[k]);
+    if (prev) { let sum = 0; for (let k = lo; k < N / 2; k++) { const d = m[k] - prev[k]; if (d > 0) sum += d; } flux[f] = sum; }
+    prev = m;
+    if ((f & 1023) === 1023) await new Promise((r) => setTimeout(r, 0));
+  }
+  const W = Math.round((0.25 * rate) / hop), cum = new Float64Array(frames + 1);
+  for (let f = 0; f < frames; f++) cum[f + 1] = cum[f] + flux[f];
+  const floor = 0.1 * (cum[frames] / frames), minGap = Math.round((0.05 * rate) / hop), out = [];
+  let last = -minGap;
+  for (let f = 1; f < frames - 1; f++) {
+    if (flux[f] < flux[f - 1] || flux[f] < flux[f + 1] || f - last < minGap) continue;
+    const a = Math.max(0, f - W), b = Math.min(frames, f + W + 1), mean = (cum[b] - cum[a]) / (b - a);
+    if (flux[f] > 1.6 * mean + floor) { out.push((f * hop + N / 2) / rate); last = f; }
+  }
+  return out;
+}
+
+// Zones of normal-speed playback around each attack: up to 35 ms before and 60 ms after, and at most a quarter of
+// the gap to the neighbouring attack so the stretch between them never runs at less than half the chosen speed.
+function attackWarp(onsets, duration) {
+  const n = onsets.length, x = new Float64Array(n), a = new Float64Array(n), b = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    x[i] = onsets[i];
+    a[i] = Math.min(0.035, (onsets[i] - (i ? onsets[i - 1] : 0)) / 4);
+    b[i] = Math.min(0.06, ((i + 1 < n ? onsets[i + 1] : duration) - onsets[i]) / 4);
+  }
+  return { x, a, b, end: duration, maxRate: ATTACK_WARP_BELOW };
+}
 
 const LOW_NOTE = 24, HIGH_NOTE = 96; // C1 to C7, the range of the on-screen keyboard
 function noteLevels(signal, sr, timeSec, cents) {
