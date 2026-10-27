@@ -387,8 +387,8 @@
       </div>
       <input id="fileInput" class="visually-hidden" type="file" multiple accept="audio/*,video/*,.flac,.m4a,.wav,.mp3,.aac,.ogg,.opus,.webm,.mp4,.mov,.qta">
       <div class="tg">
-        <button class="tb" type="button" id="tbAB" title="Set loop start (A), then loop end (O), at the playhead" aria-label="Set loop A then B"><svg><use href="#i-ab"/></svg></button>
-        <button class="tb" type="button" id="loopBtn" title="Loop on / off (L)" aria-label="Loop" aria-pressed="false"><svg><use href="#i-loop"/></svg></button>
+        <button class="tb" type="button" id="tbAB" title="Set the loop start, then the loop end, at the playhead (L, then L again)" aria-label="Set loop A then B"><svg><use href="#i-ab"/></svg></button>
+        <button class="tb" type="button" id="loopBtn" title="Loop on / off (Shift+L)" aria-label="Loop" aria-pressed="false"><svg><use href="#i-loop"/></svg></button>
         <button class="tb" type="button" id="clearLoop" title="Clear the loop" aria-label="Clear loop"><svg><use href="#i-clearloop2"/></svg></button>
       </div>
       <div class="tg">
@@ -552,7 +552,7 @@
       <p class="hint" id="engineName">Audio engine: starting…</p>
       <p class="help">
         <kbd>Space</kbd> play / stop (back to where you started) · <kbd>Enter</kbd> stop, again for the start · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker · <kbd>Home</kbd> start of song · <kbd>End</kbd> last marker<br>
-        <kbd>A</kbd> or <kbd>I</kbd> loop start · <kbd>O</kbd> loop end, at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
+        <kbd>L</kbd> loop start, then <kbd>L</kbd> again for the end · <kbd>⇧L</kbd> loop on / off · <kbd>A</kbd> / <kbd>O</kbd> just the start / end · drag across the waveform to make a loop<br>
         <kbd>S</kbd> section · <kbd>M</kbd> marker · <kbd>B</kbd> beat, tapped along while it plays<br>
         <kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Y</kbd> redo · drag a loop's middle to move it, its edges to resize it<br>
         <kbd>T</kbd> full speed / practice speed · <kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> speed ±5% · <kbd>+</kbd> <kbd>−</kbd> zoom · ⌘/Ctrl + scroll or pinch on the waveform to zoom
@@ -2182,6 +2182,22 @@ function setB() {
   const now = engine.currentTime(), l = S().loop;
   setLoop(l.a != null && l.a < now - 0.05 ? l.a : Math.max(0, now - 4), now, true);
 }
+// The [AB] button and the L key: first press sets the loop start at the playhead, the next sets the end and turns
+// the loop on.
+let abNext = 'a';
+function loopStep(how) {
+  const now = engine.currentTime(), l = S().loop;
+  if (abNext === 'a') {
+    // Only the start for now: the loop stays off so playback carries on until the end is marked.
+    S().loop = { a: now, b: null, on: false };
+    applyLoop(); saveSoon(); renderLoop(); dirtyWave = true;
+    abNext = 'b';
+    toast('Loop start set. ' + how + ' again at the end of the passage.', 2500);
+  } else {
+    abNext = 'a';
+    if (l.a != null && now > l.a + 0.05) setLoop(l.a, now); else setB();
+  }
+}
 function clearLoop() {
   S().loop = { a: null, b: null, on: false };
   applyLoop(); saveSoon(); renderLoop(); dirtyWave = true;
@@ -3109,11 +3125,7 @@ function wire() {
   $('#captureMic').addEventListener('click', () => startCapture('mic'));
   $('#recStop').addEventListener('click', () => stopCapture(false));
   $('#recCancel').addEventListener('click', () => stopCapture(true));
-  let abNext = 'a';
-  $('#tbAB').addEventListener('click', () => {
-    if (abNext === 'a') { setA(); abNext = 'b'; toast('Loop start set. Click again at the end of the passage.', 2500); }
-    else { setB(); abNext = 'a'; }
-  });
+  $('#tbAB').addEventListener('click', () => loopStep('Click the [AB] button'));
   $('#loopBtn').addEventListener('click', toggleLoop);
   $('#clearLoop').addEventListener('click', clearLoop);
   $('#zoomSel').addEventListener('click', () => {
@@ -3510,7 +3522,8 @@ function wire() {
     else if (k === 'Enter') { handled(); stop(); }
     else if (k === 'a' || k === 'A' || k === 'i' || k === 'I') setA();
     else if (k === 'o' || k === 'O') setB();
-    else if (k === 'l' || k === 'L') toggleLoop();
+    else if (k === 'L' && e.shiftKey) toggleLoop();
+    else if (k === 'l') loopStep('Press L');
     else if (k === 't' || k === 'T') toggleFullSpeed();
     else if (k === 'm' || k === 'M') addMarker('measure');
     else if (k === 's' || k === 'S') addMarker('section');
