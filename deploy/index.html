@@ -449,10 +449,10 @@
         <button class="round" type="button" id="stopBtn" title="Stop and go back to where you pressed Play; press again for the start of the loop or song (Enter)" aria-label="Stop"><svg><use href="#i-stop"/></svg></button>
       </div>
       <div class="tpair">
-        <button class="round sm" type="button" id="back5" title="Back 5 seconds (←)" aria-label="Back 5 seconds"><svg><use href="#i-rew"/></svg></button>
-        <button class="round sm" type="button" id="fwd5" title="Forward 5 seconds (→)" aria-label="Forward 5 seconds"><svg><use href="#i-ff"/></svg></button>
-        <button class="round sm" type="button" id="prevMarker" title="Previous marker (⌥←)" aria-label="Previous marker"><svg><use href="#i-prev"/></svg></button>
-        <button class="round sm" type="button" id="nextMarker" title="Next marker (⌥→)" aria-label="Next marker"><svg><use href="#i-next"/></svg></button>
+        <button class="round sm" type="button" id="back5" title="Previous marker (⌥←)" aria-label="Previous marker"><svg><use href="#i-rew"/></svg></button>
+        <button class="round sm" type="button" id="fwd5" title="Next marker (⌥→)" aria-label="Next marker"><svg><use href="#i-ff"/></svg></button>
+        <button class="round sm" type="button" id="prevMarker" title="Start of the song (Home)" aria-label="Start of the song"><svg><use href="#i-prev"/></svg></button>
+        <button class="round sm" type="button" id="nextMarker" title="Last marker (End)" aria-label="Last marker"><svg><use href="#i-next"/></svg></button>
       </div>
       <div class="cgroup c-speed">
         <div class="sp-box"><output class="pill white small editable" id="speedOut" title="Speed. Double-click to type a percentage.">100%</output></div>
@@ -551,7 +551,7 @@
       </div>
       <p class="hint" id="engineName">Audio engine: starting…</p>
       <p class="help">
-        <kbd>Space</kbd> play / stop (back to where you started) · <kbd>Enter</kbd> stop, again for the start · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker<br>
+        <kbd>Space</kbd> play / stop (back to where you started) · <kbd>Enter</kbd> stop, again for the start · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker · <kbd>Home</kbd> start of song · <kbd>End</kbd> last marker<br>
         <kbd>A</kbd> <kbd>B</kbd> loop start / end at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
         <kbd>S</kbd> section · <kbd>M</kbd> measure · <kbd>N</kbd> beat marker, tapped along while it plays<br>
         <kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Y</kbd> redo · drag a loop's middle to move it, its edges to resize it<br>
@@ -2208,6 +2208,10 @@ function loopFromMarker(m) {
   setLoop(m.t, next ? next.t : engine.duration);
 }
 
+function jumpLastMarker() {
+  const m = current.markers[current.markers.length - 1];
+  if (m) seek(m.t); else toast('No markers yet. Add one with S, M or N.', 2500);
+}
 function jumpMarker(dir) {
   const now = engine.currentTime();
   if (dir < 0) {
@@ -3207,10 +3211,10 @@ function wire() {
   $('#playBtn').addEventListener('click', play);
   $('#pauseBtn').addEventListener('click', () => { if (engine.playing) stop(); });
   $('#stopBtn').addEventListener('click', stop);
-  $('#back5').addEventListener('click', () => seek(engine.currentTime() - 5));
-  $('#fwd5').addEventListener('click', () => seek(engine.currentTime() + 5));
-  $('#prevMarker').addEventListener('click', () => jumpMarker(-1));
-  $('#nextMarker').addEventListener('click', () => jumpMarker(1));
+  $('#back5').addEventListener('click', () => jumpMarker(-1));
+  $('#fwd5').addEventListener('click', () => jumpMarker(1));
+  $('#prevMarker').addEventListener('click', () => seek(0));
+  $('#nextMarker').addEventListener('click', jumpLastMarker);
   $('#speed').addEventListener('input', (e) => setSpeed(sliderToSpeed(Number(e.target.value))));
   // Pink / lavender boxes: a single click sets the point at the playhead; a double-click types it instead.
   const clickOrEdit = (el, act) => {
@@ -3499,6 +3503,8 @@ function wire() {
     if (k === ' ') { handled(); if (!engine.playing) view.follow = true; togglePlay(); }
     else if (k === 'ArrowLeft') { handled(); e.altKey ? jumpMarker(-1) : seek(engine.currentTime() - 5); }
     else if (k === 'ArrowRight') { handled(); e.altKey ? jumpMarker(1) : seek(engine.currentTime() + 5); }
+    else if (k === 'Home') { handled(); seek(0); }
+    else if (k === 'End') { handled(); jumpLastMarker(); }
     else if (k === 'ArrowUp' && e.shiftKey) { handled(); setSpeed(S().speed + 0.05); }
     else if (k === 'ArrowDown' && e.shiftKey) { handled(); setSpeed(S().speed - 0.05); }
     else if (k === 'Enter') { handled(); stop(); }
