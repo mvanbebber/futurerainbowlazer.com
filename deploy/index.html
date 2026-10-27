@@ -2124,6 +2124,7 @@ async function selectSong(id) {
   // Keep only a few decoded songs in memory.
   for (const key of buffers.keys()) if (buffers.size > 3 && key !== id && key !== 'example') buffers.delete(key);
   current = song;
+  abNext = 'a';
   undoHistory.baseId = song.id;
   undoHistory.base = snapshot(song);
   const st = song.settings;
@@ -2199,6 +2200,7 @@ function loopStep(how) {
   }
 }
 function clearLoop() {
+  abNext = 'a';
   S().loop = { a: null, b: null, on: false };
   applyLoop(); saveSoon(); renderLoop(); dirtyWave = true;
 }
@@ -2373,7 +2375,9 @@ function drawWave(now) {
   // The loop (or a drag in progress) shows as a blue band with its own waveform colour, like a selection.
   const l = S().loop;
   // A loop that is switched off is not drawn at all (it comes back when switched on again).
-  const band = selection || (l.on && l.a != null && l.b != null ? [l.a, l.b] : null);
+  // While a loop is being marked (L or [AB] pressed once), the band grows from its start to the playhead.
+  const marking = abNext === 'b' && l.a != null && l.b == null ? [Math.min(l.a, now), Math.max(l.a, now)] : null;
+  const band = selection || marking || (l.on && l.a != null && l.b != null ? [l.a, l.b] : null);
   if (band) {
     const a = Math.max(0, x(band[0])), b = Math.min(W, x(band[1]));
     if (b > a) {
