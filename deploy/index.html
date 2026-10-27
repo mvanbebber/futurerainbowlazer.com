@@ -445,8 +445,8 @@
       </div>
       <div class="transport">
         <button class="round" type="button" id="playBtn" title="Play (Space)" aria-label="Play"><svg><use href="#i-play"/></svg></button>
-        <button class="round" type="button" id="pauseBtn" title="Pause (Space)" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
-        <button class="round" type="button" id="stopBtn" title="Stop and go back to the start of the loop or song (Enter)" aria-label="Stop"><svg><use href="#i-stop"/></svg></button>
+        <button class="round" type="button" id="pauseBtn" title="Stop and go back to where you pressed Play (Space)" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
+        <button class="round" type="button" id="stopBtn" title="Stop and go back to where you pressed Play; press again for the start of the loop or song (Enter)" aria-label="Stop"><svg><use href="#i-stop"/></svg></button>
       </div>
       <div class="tpair">
         <button class="round sm" type="button" id="back5" title="Back 5 seconds (←)" aria-label="Back 5 seconds"><svg><use href="#i-rew"/></svg></button>
@@ -551,7 +551,7 @@
       </div>
       <p class="hint" id="engineName">Audio engine: starting…</p>
       <p class="help">
-        <kbd>Space</kbd> play / pause · <kbd>Enter</kbd> stop and return · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker<br>
+        <kbd>Space</kbd> play / stop (back to where you started) · <kbd>Enter</kbd> stop, again for the start · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker<br>
         <kbd>A</kbd> <kbd>B</kbd> loop start / end at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
         <kbd>S</kbd> section · <kbd>M</kbd> measure · <kbd>N</kbd> beat marker, tapped along while it plays<br>
         <kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Y</kbd> redo · drag a loop's middle to move it, its edges to resize it<br>
@@ -2220,7 +2220,7 @@ function jumpMarker(dir) {
   }
 }
 
-function seek(t) { engine.seek(t); followView(true); dirtyWave = true; }
+function seek(t) { engine.seek(t); if (engine.playing) playOrigin = engine.currentTime(); followView(true); dirtyWave = true; }
 
 // ---------------------------------------------------------------- render: panels
 function renderAll() {
@@ -2577,12 +2577,16 @@ function frame(ts) {
   requestAnimationFrame(frame);
 }
 
-// Where Play was last pressed; the playhead returns here when the song runs out (and no loop is on).
+// Where playback started: Play always starts a loop that's on from its beginning, and pausing or stopping returns
+// the playhead here so the next Play starts from the same place. Jumping somewhere while playing moves it.
 let playOrigin = 0;
+const startPoint = () => { const l = S().loop; return l.on && l.a != null ? l.a : playOrigin; };
 async function play() {
   if (!engine.playing && engine.buffer) {
-    const now = engine.currentTime();
-    playOrigin = now >= engine.duration - 0.05 ? 0 : now;
+    const l = S().loop;
+    if (l.on && l.a != null) seek(l.a);
+    else if (engine.currentTime() >= engine.duration - 0.05) seek(0);
+    playOrigin = engine.currentTime();
   }
   await engine.play();
   dirtyWave = true;
@@ -2596,13 +2600,13 @@ function returnAfterEnd() {
   play().then(() => { playOrigin = origin; });
   saveSoon();
 }
-function togglePlay() { if (engine.playing) { engine.pause(); saveSoon(); } else play(); }
 function stop() {
+  const wasPlaying = engine.playing;
   engine.pause();
-  const l = S().loop;
-  seek(l.on && l.a != null ? l.a : 0);
+  seek(wasPlaying ? startPoint() : S().loop.on && S().loop.a != null ? S().loop.a : 0);
   saveSoon();
 }
+function togglePlay() { if (engine.playing) stop(); else play(); }
 
 function iconBtn(label, text, fn, cls = '') {
   const b = document.createElement('button');
@@ -3201,7 +3205,7 @@ function wire() {
   });
   $('#markerName').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); });
   $('#playBtn').addEventListener('click', play);
-  $('#pauseBtn').addEventListener('click', () => { engine.pause(); saveSoon(); });
+  $('#pauseBtn').addEventListener('click', () => { if (engine.playing) stop(); });
   $('#stopBtn').addEventListener('click', stop);
   $('#back5').addEventListener('click', () => seek(engine.currentTime() - 5));
   $('#fwd5').addEventListener('click', () => seek(engine.currentTime() + 5));
