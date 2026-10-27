@@ -387,7 +387,7 @@
       </div>
       <input id="fileInput" class="visually-hidden" type="file" multiple accept="audio/*,video/*,.flac,.m4a,.wav,.mp3,.aac,.ogg,.opus,.webm,.mp4,.mov,.qta">
       <div class="tg">
-        <button class="tb" type="button" id="tbAB" title="Set loop start (A), then loop end (B), at the playhead" aria-label="Set loop A then B"><svg><use href="#i-ab"/></svg></button>
+        <button class="tb" type="button" id="tbAB" title="Set loop start (A), then loop end (O), at the playhead" aria-label="Set loop A then B"><svg><use href="#i-ab"/></svg></button>
         <button class="tb" type="button" id="loopBtn" title="Loop on / off (L)" aria-label="Loop" aria-pressed="false"><svg><use href="#i-loop"/></svg></button>
         <button class="tb" type="button" id="clearLoop" title="Clear the loop" aria-label="Clear loop"><svg><use href="#i-clearloop2"/></svg></button>
       </div>
@@ -440,7 +440,7 @@
         <div class="times">
           <output class="pill yellow editable" id="now" title="Playhead position. Double-click to type a time.">0:00.00</output>
           <button class="pill pink editable" type="button" id="loopStartBox" title="Loop start. Click: set it at the playhead (A). Double-click: type a time.">–</button>
-          <button class="pill lavender editable" type="button" id="loopEndBox" title="Loop end. Click: set it at the playhead (B). Double-click: type a time.">–</button>
+          <button class="pill lavender editable" type="button" id="loopEndBox" title="Loop end. Click: set it at the playhead (O). Double-click: type a time.">–</button>
         </div>
       </div>
       <div class="transport">
@@ -512,7 +512,7 @@
           <div class="row">
             <button class="btn small" data-add="section" type="button">+ Section <kbd>S</kbd></button>
             <button class="btn small" data-add="measure" type="button">+ Marker <kbd>M</kbd></button>
-            <button class="btn small" data-add="beat" type="button">+ Beat <kbd>N</kbd></button>
+            <button class="btn small" data-add="beat" type="button">+ Beat <kbd>B</kbd></button>
           </div>
         </div>
         <div class="list compact" id="markerList"></div>
@@ -552,8 +552,8 @@
       <p class="hint" id="engineName">Audio engine: starting…</p>
       <p class="help">
         <kbd>Space</kbd> play / stop (back to where you started) · <kbd>Enter</kbd> stop, again for the start · <kbd>←</kbd> <kbd>→</kbd> 5 seconds · <kbd>⌥←</kbd> <kbd>⌥→</kbd> previous / next marker · <kbd>Home</kbd> start of song · <kbd>End</kbd> last marker<br>
-        <kbd>A</kbd> <kbd>B</kbd> loop start / end at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
-        <kbd>S</kbd> section · <kbd>M</kbd> marker · <kbd>N</kbd> beat, tapped along while it plays<br>
+        <kbd>A</kbd> or <kbd>I</kbd> loop start · <kbd>O</kbd> loop end, at the playhead · <kbd>L</kbd> loop on / off · drag across the waveform to make a loop<br>
+        <kbd>S</kbd> section · <kbd>M</kbd> marker · <kbd>B</kbd> beat, tapped along while it plays<br>
         <kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd> undo · <kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Y</kbd> redo · drag a loop's middle to move it, its edges to resize it<br>
         <kbd>T</kbd> full speed / practice speed · <kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd> speed ±5% · <kbd>+</kbd> <kbd>−</kbd> zoom · ⌘/Ctrl + scroll or pinch on the waveform to zoom
       </p>
@@ -2210,7 +2210,7 @@ function loopFromMarker(m) {
 
 function jumpLastMarker() {
   const m = current.markers[current.markers.length - 1];
-  if (m) seek(m.t); else toast('No markers yet. Add one with S, M or N.', 2500);
+  if (m) seek(m.t); else toast('No markers yet. Add one with S, M or B.', 2500);
 }
 function jumpMarker(dir) {
   const now = engine.currentTime();
@@ -2623,7 +2623,7 @@ function renderMarkers() {
   const list = $('#markerList');
   list.textContent = '';
   if (!current.markers.length) {
-    list.innerHTML = '<p class="empty">No markers yet. Press S, M or N while the song plays to tap them in.</p>';
+    list.innerHTML = '<p class="empty">No markers yet. Press S, M or B while the song plays to tap them in.</p>';
     return;
   }
   for (const m of current.markers) {
@@ -3508,13 +3508,13 @@ function wire() {
     else if (k === 'ArrowUp' && e.shiftKey) { handled(); setSpeed(S().speed + 0.05); }
     else if (k === 'ArrowDown' && e.shiftKey) { handled(); setSpeed(S().speed - 0.05); }
     else if (k === 'Enter') { handled(); stop(); }
-    else if (k === 'a' || k === 'A') setA();
-    else if (k === 'b' || k === 'B') setB();
+    else if (k === 'a' || k === 'A' || k === 'i' || k === 'I') setA();
+    else if (k === 'o' || k === 'O') setB();
     else if (k === 'l' || k === 'L') toggleLoop();
     else if (k === 't' || k === 'T') toggleFullSpeed();
     else if (k === 'm' || k === 'M') addMarker('measure');
     else if (k === 's' || k === 'S') addMarker('section');
-    else if (k === 'n' || k === 'N') addMarker('beat');
+    else if (k === 'b' || k === 'B') addMarker('beat');
     else if (k === '+' || k === '=') zoom(1 / 1.6);
     else if (k === '-' || k === '_') zoom(1.6);
   });
