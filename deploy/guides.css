@@ -50,3 +50,4 @@ footer.site nav { display: flex; flex-wrap: wrap; gap: 6px 16px; }
   .lead { font-size: 17px; }
   header.site .cta-small { padding: 6px 10px; }
 }
+p.note { color: var(--muted); font-size: 14px; margin-top: 4px; }
