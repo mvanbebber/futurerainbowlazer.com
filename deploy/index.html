@@ -12,6 +12,14 @@
 </style>
 <!-- app:head -->
 <title>Slow Down Buddy: record audio from any website and slow it down</title>
+<script>
+  // Anonymous page and feature counts (GoatCounter: no cookies, no personal data), only on slowdownbuddy.com.
+  if (/(^|\.)slowdownbuddy\.com$/.test(location.hostname)) {
+    const gc = document.createElement('script');
+    gc.async = true; gc.src = 'https://gc.zgo.at/count.js'; gc.dataset.goatcounter = 'https://slowdownbuddy.goatcounter.com/count';
+    document.head.append(gc);
+  }
+</script>
 <meta name="description" content="Record the audio playing on any website, right in your browser, and save it to Slow Down Buddy. Then slow it down without changing pitch, loop tricky passages, transpose and add markers to learn songs by ear. Also opens MP3, WAV, FLAC, M4A and video files. Free.">
 <link rel="canonical" href="https://slowdownbuddy.com/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -266,6 +274,18 @@
   .rec .clock { font-family: var(--num); font-size: 20px; font-variant-numeric: tabular-nums; }
   .meter { flex: 1 1 120px; height: 8px; border-radius: 99px; background: #e0e0e0; overflow: hidden; border: 1px solid #bbb; }
   .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #2fb36b, #e4c23a 70%, #e0503c); }
+  dialog.sheet { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--window); color: var(--ink); box-shadow: 0 18px 50px rgba(0,0,0,0.3); }
+  dialog.sheet::backdrop { background: rgba(0,0,0,0.35); }
+  dialog.sheet h3 { margin: 0 0 6px; font-size: 17px; }
+  dialog.sheet form { display: grid; gap: 12px; }
+  .field { display: grid; gap: 5px; font-weight: 600; font-size: 13px; border: 0; padding: 0; margin: 0; }
+  .field legend { padding: 0; margin-bottom: 4px; }
+  .field textarea { font: inherit; font-weight: 400; border-radius: 5px; border: 1px solid #a8a8a8; padding: 6px 8px; resize: vertical; background: #fff; }
+  .field .text-input { font-weight: 400; min-height: 32px; }
+  fieldset.field label { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
+  .row.end { justify-content: flex-end; }
+  button.link { border: 0; background: none; padding: 0; color: #2c5d99; text-decoration: underline; cursor: pointer; font: inherit; }
+  .pro-note { margin-top: 2px; }
   .btn.primary { background: linear-gradient(#5a8df0, #2f62cf); color: #fff; border-color: #2a54ad; }
   @keyframes pulse { 50% { opacity: 0.35; } }
   @media (prefers-reduced-motion: reduce) { .rec .live { animation: none; } }
@@ -502,6 +522,7 @@
             <input id="restoreInput" class="visually-hidden" type="file" accept=".zip,application/zip">
           </div>
         </div>
+        <p class="hint pro-note">Pro is coming: export slowed-down MP3s, sync between devices, chord names. <button class="link" type="button" data-dialog="waitlist">Get early-bird pricing</button> · <button class="link" type="button" data-dialog="feedback">Send feedback</button></p>
       </section>
       <section class="lm-col lib-loops" aria-label="Loops">
         <div class="lm-head"><h4>Loops</h4><div id="loopEditor"></div></div>
@@ -537,6 +558,14 @@
 
     <div class="pbody" data-panel="keys" hidden>
       <div class="about">
+        <h4>Ideas, problems, wishes?</h4>
+        <div class="row">
+          <button class="btn small primary" type="button" data-dialog="feedback">Send feedback</button>
+          <button class="btn small" type="button" data-dialog="waitlist">Join the Pro waitlist</button>
+        </div>
+        <p class="hint">Guides: <a href="/free-transcribe-alternative/">a free Transcribe! alternative</a> · <a href="/slow-down-youtube-without-changing-pitch/">slow down YouTube and other sites without changing pitch</a> · <a href="/learn-songs-by-ear/">learn songs by ear</a></p>
+      </div>
+      <div class="about">
         <h4>Record audio from any website</h4>
         <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome or Edge, press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud, on any device.</p>
       </div>
@@ -571,6 +600,37 @@
     <button class="btn primary" id="recStop" type="button">Stop and add to library</button>
   </div>
 </div>
+<dialog class="sheet" id="dlg-feedback" aria-labelledby="fbTitle">
+  <form name="feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+    <input type="hidden" name="form-name" value="feedback">
+    <p hidden><label>Leave this empty <input name="bot-field"></label></p>
+    <h3 id="fbTitle">Send feedback</h3>
+    <p class="hint">Bugs, ideas, a feature you’d pay for: it all helps. Your songs are never sent, only what you type here.</p>
+    <label class="field">What’s on your mind?<textarea name="message" rows="5" required maxlength="4000"></textarea></label>
+    <label class="field">Email (optional, if you’d like a reply)<input class="text-input" type="email" name="email" autocomplete="email"></label>
+    <input type="hidden" name="context">
+    <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Send</button></div>
+  </form>
+</dialog>
+<dialog class="sheet" id="dlg-waitlist" aria-labelledby="wlTitle">
+  <form name="pro-waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+    <input type="hidden" name="form-name" value="pro-waitlist">
+    <p hidden><label>Leave this empty <input name="bot-field"></label></p>
+    <h3 id="wlTitle">Slow Down Buddy Pro is coming</h3>
+    <p class="hint">Everything you use today stays free. Join the list for early-bird pricing when Pro launches, and tell us what you’d want most.</p>
+    <label class="field">Email<input class="text-input" type="email" name="email" required autocomplete="email"></label>
+    <fieldset class="field"><legend>Most wanted (pick any)</legend>
+      <label><input type="checkbox" name="want" value="export"> Export slowed-down or transposed audio (MP3/WAV)</label>
+      <label><input type="checkbox" name="want" value="sync"> Sync my library between phone and computer</label>
+      <label><input type="checkbox" name="want" value="chords"> Chord names on the waveform</label>
+      <label><input type="checkbox" name="want" value="bars"> Automatic bar and beat markers</label>
+      <label><input type="checkbox" name="want" value="stems"> Separate vocals, bass, drums</label>
+      <label><input type="checkbox" name="want" value="youtube"> Practice YouTube videos by pasting a link</label>
+    </fieldset>
+    <label class="field">Anything else?<input class="text-input" type="text" name="other" maxlength="500"></label>
+    <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Join the waitlist</button></div>
+  </form>
+</dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="drop" id="drop" hidden>Drop to open</div>
 
@@ -1093,6 +1153,39 @@ const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A'
 const noteName = (m) => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
 
 let toastTimer = 0;
+// Anonymous usage counts (GoatCounter, no cookies), only on the real site: what gets used, never any audio.
+function track(name) {
+  try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) { /* analytics is optional */ }
+}
+
+// Feedback and Pro waitlist: plain HTML forms handled by Netlify Forms, sent in the background.
+function openDialog(name) {
+  const dlg = $('#dlg-' + name);
+  if (!dlg || !dlg.showModal) { toast('This browser can’t show the form. Please try another browser.'); return; }
+  const ctx = dlg.querySelector('[name="context"]');
+  if (ctx) ctx.value = [navigator.userAgent, current ? 'song: ' + (current.source || '') : '', 'speed ' + Math.round(S().speed * 100) + '%'].join(' | ');
+  dlg.showModal();
+  track('open-' + name);
+}
+async function submitDialogForm(form) {
+  const data = new URLSearchParams();
+  for (const [k, v] of new FormData(form)) data.append(k, v);
+  const button = form.querySelector('[type="submit"]');
+  button.disabled = true;
+  try {
+    const res = await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: data.toString() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    form.reset();
+    form.closest('dialog').close();
+    toast(form.name === 'pro-waitlist' ? 'You’re on the list. Thanks! We’ll email you when Pro launches.' : 'Thanks! Your feedback was sent.', 5000);
+    track(form.name === 'pro-waitlist' ? 'waitlist-joined' : 'feedback-sent');
+  } catch (e) {
+    toast('Couldn’t send that just now (' + (e.message || 'network error') + '). Please try again on slowdownbuddy.com.', 7000);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function toast(msg, ms = 4200) {
   const el = $('#toast');
   el.textContent = msg;
@@ -2094,7 +2187,8 @@ async function importFiles(files) {
   requestPersistence();
   for (const file of files) {
     const title = file.name.replace(/\.[^.]+$/, '') || 'Untitled';
-    await importBlob(file, title, 'file');
+    const song = await importBlob(file, title, 'file');
+    if (song) track('import-' + ((file.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'file').toLowerCase());
   }
 }
 
@@ -2776,7 +2870,7 @@ async function startCapture(kind) {
   let stream;
   try {
     if (kind === 'tab') {
-      if (!navigator.mediaDevices.getDisplayMedia) { toast('Phones and this browser can’t capture another tab. Use Chrome or Edge on a computer, or the Slow Down Buddy iPhone app.', 8000); return; }
+      if (!navigator.mediaDevices.getDisplayMedia) { toast('Phones and this browser can’t capture another tab. Use Chrome or Edge on a computer, or record with the microphone button.', 8000); return; }
       stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, systemAudio: 'include', selfBrowserSurface: 'exclude', preferCurrentTab: false });
       if (!stream.getAudioTracks().length) {
         stream.getTracks().forEach((t) => t.stop());
@@ -2843,7 +2937,7 @@ async function finishCapture() {
   const d = new Date(), pad = (n) => String(n).padStart(2, '0');
   const stamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + '.' + pad(d.getMinutes());
   const song = await importBlob(new Blob(chunks, { type }), (kind === 'tab' ? 'Tab capture ' : 'Mic recording ') + stamp, kind);
-  if (song) toast('Added “' + song.title + '”. Rename it above.');
+  if (song) { toast('Added “' + song.title + '”. Rename it above.'); track(kind === 'tab' ? 'recorded-website' : 'recorded-mic'); }
 }
 
 // ---------------------------------------------------------------- storage status, persistence, backup
@@ -2980,6 +3074,7 @@ async function saveFile(filename, blob) {
   a.href = url; a.download = filename; a.hidden = true;
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+  track('backup');
   toast('Backup downloaded: ' + filename + ' (' + fmtBytes(blob.size) + '). Keep it somewhere safe, like iCloud Drive or Dropbox.', 7000);
 }
 
@@ -3124,6 +3219,12 @@ function wire() {
   $('#redoBtn').addEventListener('click', redo);
   $('#tbBackup').addEventListener('click', backupLibrary);
   $('#backupBtn').addEventListener('click', backupLibrary);
+  document.querySelectorAll('[data-dialog]').forEach((b) => b.addEventListener('click', () => openDialog(b.dataset.dialog)));
+  document.querySelectorAll('dialog.sheet').forEach((dlg) => {
+    dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
+    dlg.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); submitDialogForm(e.target); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+  });
   $('#restoreInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreBackup(f); });
   $('#captureTab').addEventListener('click', () => startCapture('tab'));
   $('#captureMic').addEventListener('click', () => startCapture('mic'));
@@ -3505,6 +3606,7 @@ function wire() {
   });
 
   addEventListener('keydown', (e) => {
+    if (document.querySelector('dialog[open]')) return; // typing in the feedback or waitlist form
     const el = document.activeElement;
     if (el && ((el.tagName === 'INPUT' && el.type !== 'range' && el.type !== 'radio') || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
     if (el && el.type === 'range' && e.key.startsWith('Arrow')) return;
