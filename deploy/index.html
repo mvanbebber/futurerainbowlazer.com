@@ -563,7 +563,7 @@
       </div>
       <div class="about">
         <h4>Record audio from any website</h4>
-        <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome or Edge, press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud, on any device.</p>
+        <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome, Edge or Brave (or another Chrome-based browser), press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud, on any device.</p>
       </div>
       <div class="soundcheck">
         <h4>Sound check</h4>
@@ -2862,15 +2862,15 @@ function pickMime() {
 
 async function startCapture(kind) {
   if (rec.recorder) return;
-  if (!window.MediaRecorder || !navigator.mediaDevices) { toast('This browser can’t record audio. Use Chrome, Edge or Firefox on a computer.', 7000); return; }
+  if (!window.MediaRecorder || !navigator.mediaDevices) { toast('This browser can’t record audio. Use Chrome, Edge, Brave or Firefox on a computer.', 7000); return; }
   let stream;
   try {
     if (kind === 'tab') {
-      if (!navigator.mediaDevices.getDisplayMedia) { toast('Phones and this browser can’t capture another tab. Use Chrome or Edge on a computer, or record with the microphone button.', 8000); return; }
+      if (!navigator.mediaDevices.getDisplayMedia) { toast('Phones and this browser can’t capture another tab. Use Chrome, Edge or Brave on a computer, or record with the microphone button.', 8000); return; }
       stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, systemAudio: 'include', selfBrowserSurface: 'exclude', preferCurrentTab: false });
       if (!stream.getAudioTracks().length) {
         stream.getTracks().forEach((t) => t.stop());
-        toast('No audio came through. Pick the tab playing the song and switch on “Share tab audio” (Chrome or Edge).', 8000);
+        toast('No audio came through. Pick the tab playing the song and switch on “Share tab audio” (Chrome, Edge or Brave).', 8000);
         return;
       }
     } else {

@@ -51,3 +51,4 @@ footer.site nav { display: flex; flex-wrap: wrap; gap: 6px 16px; }
   header.site .cta-small { padding: 6px 10px; }
 }
 p.note { color: var(--muted); font-size: 14px; margin-top: 4px; }
+table.fit { min-width: 0; }
