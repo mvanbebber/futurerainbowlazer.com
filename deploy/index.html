@@ -2411,7 +2411,7 @@ function setSpeed(v) {
   if (S().speed !== 1) practiceSpeed = S().speed;
   engine.speed = S().speed; saveSoon(); renderSpeedPitch();
 }
-// The running-man button flips between full speed and the last speed you practised at (70% to start with).
+// The running-man button flips between full speed and the last speed you practiced at (70% to start with).
 let practiceSpeed = 0.7;
 function toggleFullSpeed() { setSpeed(S().speed !== 1 ? 1 : practiceSpeed); }
 function setPitch(semis, cents) {
@@ -2462,7 +2462,7 @@ function drawWave(now) {
     peaks.lanes.forEach((_, li) => g.fillRect(0, Math.round(laneH * li + laneH / 2), W, dpr));
   }
   drawLanes(g, W, H, C.wave);
-  // The loop (or a drag in progress) shows as a blue band with its own waveform colour, like a selection.
+  // The loop (or a drag in progress) shows as a blue band with its own waveform color, like a selection.
   const l = S().loop;
   // A loop that is switched off is not drawn at all (it comes back when switched on again).
   // While a loop is being marked (L or [AB] pressed once), the band grows from its start to the playhead.
