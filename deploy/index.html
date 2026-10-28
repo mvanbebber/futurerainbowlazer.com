@@ -282,6 +282,7 @@
   .row.end { justify-content: flex-end; }
   button.link { border: 0; background: none; padding: 0; color: #2c5d99; text-decoration: underline; cursor: pointer; font: inherit; }
   .pro-note { margin-top: 2px; }
+  .c-phone, .phone-tip { display: none; }
   .btn.primary { background: linear-gradient(#5a8df0, #2f62cf); color: #fff; border-color: #2a54ad; }
   @keyframes pulse { 50% { opacity: 0.35; } }
   @media (prefers-reduced-motion: reduce) { .rec .live { animation: none; } }
@@ -307,18 +308,18 @@
   @media (max-width: 600px) {
     body { overflow: hidden; }
     .app { height: 100%; min-height: 0; }
-    .app > .wave-wrap { flex: 1 1 auto; height: auto; min-height: 80px; }
+    .app > .wave-wrap { flex: 1 1 auto; height: auto; min-height: 70px; max-height: 26vh; }
     .toolbar { gap: 4px 6px; padding-block: 5px; justify-content: center; }
-    .tb, .tb.sp { min-width: 30px; height: 30px; padding: 0 3px; font-size: 13px; }
-    .tb.sp { min-width: 35px; font-size: 12px; }
-    .tb svg { width: 18px; height: 18px; }
+    .tb, .tb.sp { min-width: 36px; height: 38px; padding: 0 4px; font-size: 15px; }
+    .tb.sp { min-width: 38px; font-size: 14px; }
+    .tb svg { width: 21px; height: 21px; }
     .doc-title { display: none; }
     .ruler { height: 40px; }
     .flag-edit { top: 14px; }
     #keyboard { height: 44px; }
     .hscroll { height: 14px; }
-    .controls { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "sl sl" "ti ti" "tr tp" "sp sp" "pi pi";
-      gap: 6px 8px; padding-block: 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+    .controls { flex: 1 0 auto; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "sl sl" "ti ti" "tr tp" "ph ph" "sp sp" "pi pi";
+      align-content: space-evenly; gap: 8px 8px; padding-block: 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
     .controls .cgroup { gap: 0; }
     .c-sliders { grid-area: sl; display: flex; gap: 10px; }
     .c-sliders .srow { flex: 1 1 0; min-width: 0; gap: 4px; }
@@ -327,25 +328,40 @@
     .c-times { grid-area: ti; }
     #markerName { display: none; }
     .times { flex-wrap: nowrap; gap: 6px; }
-    .times .pill { flex: 1 1 0; min-width: 0; height: 26px; font-size: 14px; padding: 0 4px; }
+    .times .pill { flex: 1 1 0; min-width: 0; height: 32px; font-size: 15px; padding: 0 4px; }
     .transport { grid-area: tr; gap: 6px; }
-    .round { width: 40px; height: 40px; }
-    .round svg { width: 18px; height: 18px; }
+    .round { width: 50px; height: 50px; }
+    .round svg { width: 22px; height: 22px; }
     .tpair { grid-area: tp; grid-template-columns: repeat(4, auto); justify-content: end; align-items: center; gap: 6px; }
-    .round.sm { width: 34px; height: 34px; }
-    .round.sm svg { width: 15px; height: 15px; }
+    .round.sm { width: 42px; height: 42px; }
+    .round.sm svg { width: 18px; height: 18px; }
     .c-speed { grid-area: sp; display: flex; align-items: center; gap: 8px; }
     .c-speed .srow { flex: 1 1 auto; min-width: 0; }
-    .c-speed .pill.small { min-width: 58px; height: 24px; }
+    .c-speed .pill.small { min-width: 64px; height: 32px; font-size: 15px; }
     .cgroup.pitch { grid-area: pi; display: flex; justify-content: space-between; gap: 6px; }
     .plabel { display: none; }
     .prow { gap: 3px; }
-    .mini, .mini.acc { min-width: 28px; height: 26px; padding: 0 4px; font-size: 12px; }
-    .mini.acc { min-width: 30px; font-size: 16px; }
+    .mini, .mini.acc { min-width: 30px; height: 34px; padding: 0 3px; font-size: 14px; }
+    .mini.acc { min-width: 31px; font-size: 18px; }
     .mini.wide { margin-left: 2px; }
-    .prow .pill.small { min-width: 40px; height: 26px; font-size: 13px; padding: 0 4px; }
+    .prow .pill.small { min-width: 38px; height: 34px; font-size: 14px; padding: 0 3px; }
+    .cgroup.pitch { gap: 4px; }
+    .prow { gap: 2px; }
     .app > .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; max-height: 62%; border-top: 1px solid var(--line);
       box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28); padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .c-phone { grid-area: ph; display: flex; gap: 8px; }
+    .c-phone .btn.big { flex: 1 1 0; min-height: 44px; font-size: 17px; font-weight: 600; border-radius: 8px; }
+    .c-phone #phLoop.on { background: linear-gradient(#5a8df0, #2f62cf); color: #fff; border-color: #2a54ad; }
+    .phone-tip:not([hidden]) { display: grid; gap: 8px; position: fixed; left: 10px; right: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 30;
+      background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.3); font-size: 15px; }
+    .phone-tip p { margin: 0; }
+    .phone-tip .btn { justify-self: end; min-height: 38px; padding: 0 18px; font-size: 16px; }
+  }
+  /* Short phones (iPhone SE and similar): a little less spacing so everything still fits. */
+  @media (max-width: 600px) and (max-height: 700px) {
+    .controls { gap: 5px 8px; }
+    .ruler { height: 36px; }
+    #keyboard { height: 38px; }
   }
 </style>
 <!-- /app:head -->
@@ -469,6 +485,10 @@
         <button class="round sm" type="button" id="fwd5" title="Next marker (⌥→)" aria-label="Next marker"><svg><use href="#i-ff"/></svg></button>
         <button class="round sm" type="button" id="prevMarker" title="Start of the song (Home)" aria-label="Start of the song"><svg><use href="#i-prev"/></svg></button>
         <button class="round sm" type="button" id="nextMarker" title="Last marker (End)" aria-label="Last marker"><svg><use href="#i-next"/></svg></button>
+      </div>
+      <div class="cgroup c-phone" aria-label="Markers and loops">
+        <button class="btn big" type="button" id="phMarker">+ Marker</button>
+        <button class="btn big" type="button" id="phLoop">Loop start</button>
       </div>
       <div class="cgroup c-speed">
         <div class="sp-box"><output class="pill white small editable" id="speedOut" title="Speed. Double-click to type a percentage.">100%</output></div>
@@ -627,6 +647,11 @@
     <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Join the waitlist</button></div>
   </form>
 </dialog>
+<div class="phone-tip" id="phoneTip" role="dialog" aria-label="Getting started" hidden>
+  <p><strong>Try it:</strong> tap ▶ to play the demo, then tap <strong>50%</strong> to hear it slowed down without changing pitch. Tap <strong>Loop start</strong> and <strong>Loop end</strong> to loop a passage.</p>
+  <p class="hint">On a computer (Chrome, Edge or Brave) you can also record any browser tab, like YouTube or Spotify, straight into your library.</p>
+  <button class="btn primary" type="button" id="phoneTipOk">Got it</button>
+</div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="drop" id="drop" hidden>Drop to open</div>
 
@@ -2215,6 +2240,7 @@ async function selectSong(id) {
   for (const key of buffers.keys()) if (buffers.size > 3 && key !== id && key !== 'example') buffers.delete(key);
   current = song;
   abNext = 'a';
+  syncPhoneLoop();
   undoHistory.baseId = song.id;
   undoHistory.base = snapshot(song);
   const st = song.settings;
@@ -2276,6 +2302,13 @@ function setB() {
 // The [AB] button and the L key: first press sets the loop start at the playhead, the next sets the end and turns
 // the loop on.
 let abNext = 'a';
+// The phone-only Loop button shows which press comes next.
+function syncPhoneLoop() {
+  const b = document.getElementById('phLoop');
+  if (!b) return;
+  b.textContent = abNext === 'b' ? 'Loop end' : 'Loop start';
+  b.classList.toggle('on', abNext === 'b');
+}
 function loopStep(how) {
   const now = engine.currentTime(), l = S().loop;
   if (abNext === 'a') {
@@ -2288,9 +2321,11 @@ function loopStep(how) {
     abNext = 'a';
     if (l.a != null && now > l.a + 0.05) setLoop(l.a, now); else setB();
   }
+  syncPhoneLoop();
 }
 function clearLoop() {
   abNext = 'a';
+  syncPhoneLoop();
   S().loop = { a: null, b: null, on: false };
   applyLoop(); saveSoon(); renderLoop(); dirtyWave = true;
 }
@@ -3227,6 +3262,15 @@ function wire() {
   $('#recStop').addEventListener('click', () => stopCapture(false));
   $('#recCancel').addEventListener('click', () => stopCapture(true));
   $('#tbAB').addEventListener('click', () => loopStep('Click the [AB] button'));
+  $('#phLoop').addEventListener('click', () => loopStep('Tap Loop end'));
+  $('#phMarker').addEventListener('click', () => { addMarker('measure'); toast('Marker added at ' + clock(engine.currentTime()), 1200); });
+  // First visit on a phone: a short how-to (shown once).
+  try {
+    if (matchMedia('(max-width: 600px)').matches && !localStorage.getItem('slowdown.phoneTip')) {
+      $('#phoneTip').hidden = false;
+      $('#phoneTipOk').addEventListener('click', () => { $('#phoneTip').hidden = true; try { localStorage.setItem('slowdown.phoneTip', '1'); } catch (e) { /* private mode */ } });
+    }
+  } catch (e) { /* storage unavailable: skip the tip */ }
   $('#loopBtn').addEventListener('click', toggleLoop);
   $('#clearLoop').addEventListener('click', clearLoop);
   $('#zoomSel').addEventListener('click', () => {
