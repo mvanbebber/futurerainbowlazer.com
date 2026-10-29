@@ -373,6 +373,14 @@
     .tb.support { gap: 0; padding: 0 2px; }
     .tb.support span { display: none; }
   }
+  /* Tablets and other touch screens wider than a phone: bigger toolbar buttons. */
+  @media (min-width: 601px) and (pointer: coarse) {
+    .toolbar { gap: 8px 10px; padding-block: 8px; }
+    .tb { min-width: 46px; height: 46px; padding: 0 8px; font-size: 17px; }
+    .tb.sp { min-width: 54px; font-size: 16px; }
+    .tb svg { width: 25px; height: 25px; }
+    .tb.support svg { width: 22px; height: 22px; }
+  }
   /* Short phones (iPhone SE and similar): a little less spacing so everything still fits. */
   @media (max-width: 600px) and (max-height: 700px) {
     .controls { gap: 5px 8px; }
@@ -2268,7 +2276,8 @@ async function selectSong(id) {
       try { bytes = await blob.arrayBuffer(); } catch (e) { throw new Error('lost'); }
       if (!bytes.byteLength) throw new Error('lost');
       const fromPickedFile = typeof File !== 'undefined' && blob instanceof File;
-      try { buffer = await decode(fromPickedFile ? bytes.slice(0) : bytes); } catch (e) { if (fromPickedFile) throw new Error('lost'); throw e; }
+      // It decoded fine when it was imported, so a failure now means the saved copy was damaged or deleted.
+      try { buffer = await decode(fromPickedFile ? bytes.slice(0) : bytes); } catch (e) { throw new Error('lost'); }
       // Songs saved by older versions point at the picked file; replace that with a real copy while it still reads.
       if (fromPickedFile) Store.putAudio(id, new Blob([bytes], { type: blob.type || '' }));
       buffers.set(id, buffer);
@@ -2278,7 +2287,7 @@ async function selectSong(id) {
       if (why === 'lost') {
         song.audioLost = true;
         Store.putSong(song);
-        toast('This phone deleted the saved audio for “' + song.title + '”. Open the same file again with the folder button and it comes back with its loops and markers.', 12000);
+        toast('The saved audio for “' + song.title + '” can’t be read anymore (iPhones sometimes delete it). Open the same file again with the folder button, or restore your backup again, and it comes back with its loops and markers.', 12000);
       } else {
         toast(why === 'missing'
           ? 'That song’s audio is no longer stored in this browser. Import it again.'
@@ -3195,6 +3204,10 @@ async function backupLibrary() {
   }
 }
 
+async function audioReadable(id) {
+  try { const b = await Store.getAudio(id); return !!b && (await b.slice(0, 16).arrayBuffer()).byteLength > 0; } catch (e) { return false; }
+}
+
 async function restoreBackup(file) {
   if (!Store.db) { toast('This browser isn’t saving data here, so a backup can’t be restored.'); return; }
   requestPersistence();
@@ -3217,8 +3230,16 @@ async function restoreBackup(file) {
       song.loops = Array.isArray(song.loops) ? song.loops : [];
       const existing = songs.find((s) => s.id === song.id);
       if (existing) {
-        // Same song already here: take the backup's markers, loops and settings.
+        // Same song already here: take the backup's markers, loops and settings, and its audio too if ours is gone.
         Object.assign(existing, { title: song.title, settings: song.settings, markers: song.markers, loops: song.loops });
+        if (existing.audioLost || !(await audioReadable(existing.id))) {
+          const raw = await zip.get(audioFile);
+          if (raw) {
+            await Store.putAudio(existing.id, new Blob([await raw.arrayBuffer()], { type: audioType || '' }));
+            delete existing.audioLost;
+            buffers.delete(existing.id);
+          }
+        }
         await Store.putSong(existing);
         updated++;
         if (current && current.id === existing.id) currentChanged = true;
@@ -3226,7 +3247,8 @@ async function restoreBackup(file) {
       }
       const raw = await zip.get(audioFile);
       if (!raw) { failed++; continue; }
-      const blob = new Blob([raw], { type: audioType || '' });
+      // A real copy, not a slice of the backup file: on iPhone that file is temporary and gets deleted.
+      const blob = new Blob([await raw.arrayBuffer()], { type: audioType || '' });
       if ((await Store.putAudio(song.id, blob)) == null) { failed++; continue; }
       await Store.putSong(song);
       songs.push(song);
