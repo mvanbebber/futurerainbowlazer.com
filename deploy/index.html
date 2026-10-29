@@ -265,6 +265,7 @@
   .rec { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: #f4f4f4; border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,0.15);
     padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px));
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .rec-note { flex: 1 0 100%; margin: 0; font-size: 12px; color: var(--muted); }
   .rec-inner { max-width: 900px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
   .rec .live { width: 12px; height: 12px; border-radius: 50%; background: var(--playhead); animation: pulse 1.2s infinite; }
   .rec .clock { font-family: var(--num); font-size: 20px; font-variant-numeric: tabular-nums; }
@@ -579,6 +580,7 @@
           <button class="btn small primary" type="button" data-dialog="feedback">Send feedback</button>
           <button class="btn small" type="button" data-dialog="waitlist">Join the Pro waitlist</button>
         </div>
+        <p class="hint"><a href="/terms/" target="_blank" rel="noopener">Terms of Use</a> · <a href="/privacy/" target="_blank" rel="noopener">Privacy</a></p>
         <p class="hint">Guides: <a href="/alternatives/">compare slow-down apps</a> · <a href="/free-transcribe-alternative/">a free Transcribe! alternative</a> · <a href="/slow-down-youtube-without-changing-pitch/">slow down YouTube and other sites without changing pitch</a> · <a href="/learn-songs-by-ear/">learn songs by ear</a></p>
       </div>
       <div class="about">
@@ -614,6 +616,7 @@
     <div class="meter"><i id="recMeter"></i></div>
     <button class="btn" id="recCancel" type="button">Cancel</button>
     <button class="btn primary" id="recStop" type="button">Stop and add to library</button>
+    <p class="rec-note">Only record audio you have the right to use. Recordings are for your personal practice and stay on this device. <a href="/terms/" target="_blank" rel="noopener">Terms</a></p>
   </div>
 </div>
 <dialog class="sheet" id="dlg-feedback" aria-labelledby="fbTitle">
@@ -1175,7 +1178,9 @@ const noteName = (m) => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) -
 
 let toastTimer = 0;
 // Anonymous usage counts (GoatCounter, no cookies), only on the real site: what gets used, never any audio.
-function track(name) {
+const trackedOnce = new Set();
+function trackOnce(name) { if (!trackedOnce.has(name)) { trackedOnce.add(name); trackEvent(name); } }
+function trackEvent(name) {
   try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) { /* analytics is optional */ }
 }
 
@@ -1186,7 +1191,7 @@ function openDialog(name) {
   const ctx = dlg.querySelector('[name="context"]');
   if (ctx) ctx.value = [navigator.userAgent, current ? 'song: ' + (current.source || '') : '', 'speed ' + Math.round(S().speed * 100) + '%'].join(' | ');
   dlg.showModal();
-  track('open-' + name);
+  trackEvent('open-' + name);
 }
 async function submitDialogForm(form) {
   const data = new URLSearchParams();
@@ -1199,7 +1204,7 @@ async function submitDialogForm(form) {
     form.reset();
     form.closest('dialog').close();
     toast(form.name === 'pro-waitlist' ? 'You’re on the list. Thanks! We’ll email you when Pro launches.' : 'Thanks! Your feedback was sent.', 5000);
-    track(form.name === 'pro-waitlist' ? 'waitlist-joined' : 'feedback-sent');
+    trackEvent(form.name === 'pro-waitlist' ? 'waitlist-joined' : 'feedback-sent');
   } catch (e) {
     toast('Couldn’t send that just now (' + (e.message || 'network error') + '). Please try again on slowdownbuddy.com.', 7000);
   } finally {
@@ -2211,7 +2216,7 @@ async function importFiles(files) {
   for (const file of files) {
     const title = file.name.replace(/\.[^.]+$/, '') || 'Untitled';
     const song = await importBlob(file, title, 'file');
-    if (song) track('import-' + ((file.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'file').toLowerCase());
+    if (song) trackEvent('import-' + ((file.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'file').toLowerCase());
   }
 }
 
@@ -2269,6 +2274,7 @@ function applyLoop() {
 }
 
 function setLoop(a, b, seek = true) {
+  trackOnce('used-loop');
   const lo = clamp(Math.min(a, b), 0, engine.duration), hi = clamp(Math.max(a, b), 0, engine.duration);
   if (hi - lo < 0.05) return;
   S().loop = { a: lo, b: hi, on: true };
@@ -2446,6 +2452,7 @@ function setEQ(i, g) { S().eq[i] = g; engine.setEQ(i, g); saveSoon(); }
 function setSpeed(v) {
   S().speed = clamp(Math.round(v * 100) / 100, 0.25, 2);
   if (S().speed !== 1) practiceSpeed = S().speed;
+  if (S().speed < 1) trackOnce('slowed-down');
   engine.speed = S().speed; saveSoon(); renderSpeedPitch();
 }
 // The running-man button flips between full speed and the last speed you practiced at (70% to start with).
@@ -2733,6 +2740,7 @@ function frame(ts) {
 let playOrigin = 0;
 const startPoint = () => { const l = S().loop; return l.on && l.a != null ? l.a : playOrigin; };
 async function play() {
+  trackOnce('played');
   if (!engine.playing && engine.buffer) {
     const l = S().loop;
     if (l.on && l.a != null) seek(l.a);
@@ -2970,7 +2978,7 @@ async function finishCapture() {
   const d = new Date(), pad = (n) => String(n).padStart(2, '0');
   const stamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + '.' + pad(d.getMinutes());
   const song = await importBlob(new Blob(chunks, { type }), (kind === 'tab' ? 'Tab capture ' : 'Mic recording ') + stamp, kind);
-  if (song) { toast('Added “' + song.title + '”. Rename it above.'); track(kind === 'tab' ? 'recorded-website' : 'recorded-mic'); }
+  if (song) { toast('Added “' + song.title + '”. Rename it above.'); trackEvent(kind === 'tab' ? 'recorded-website' : 'recorded-mic'); }
 }
 
 // ---------------------------------------------------------------- storage status, persistence, backup
@@ -3107,7 +3115,7 @@ async function saveFile(filename, blob) {
   a.href = url; a.download = filename; a.hidden = true;
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
-  track('backup');
+  trackEvent('backup');
   toast('Backup downloaded: ' + filename + ' (' + fmtBytes(blob.size) + '). Keep it somewhere safe, like iCloud Drive or Dropbox.', 7000);
 }
 
@@ -3270,7 +3278,7 @@ function wire() {
   try {
     if (matchMedia('(max-width: 600px)').matches && !localStorage.getItem('slowdown.phoneTip')) {
       $('#phoneTip').hidden = false;
-      $('#phoneTipOk').addEventListener('click', () => { $('#phoneTip').hidden = true; try { localStorage.setItem('slowdown.phoneTip', '1'); } catch (e) { /* private mode */ } });
+      $('#phoneTipOk').addEventListener('click', () => { $('#phoneTip').hidden = true; trackEvent('tip-dismissed'); try { localStorage.setItem('slowdown.phoneTip', '1'); } catch (e) { /* private mode */ } });
     }
   } catch (e) { /* storage unavailable: skip the tip */ }
   $('#loopBtn').addEventListener('click', toggleLoop);
