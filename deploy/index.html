@@ -616,7 +616,7 @@
     <div class="meter"><i id="recMeter"></i></div>
     <button class="btn" id="recCancel" type="button">Cancel</button>
     <button class="btn primary" id="recStop" type="button">Stop and add to library</button>
-    <p class="rec-note">Only record audio you have the right to use. Recordings are for your personal practice and stay on this device. <a href="/terms/" target="_blank" rel="noopener">Terms</a></p>
+    <p class="rec-note" id="recNote">Only record audio you have the right to use. Recordings are for your personal practice and stay on this device. <a href="/terms/" target="_blank" rel="noopener">Terms</a></p>
   </div>
 </div>
 <dialog class="sheet" id="dlg-feedback" aria-labelledby="fbTitle">
@@ -2946,6 +2946,10 @@ async function startCapture(kind) {
   } catch (e) { rec.analyser = null; }
   rec.recorder.start(1000);
   $('#recLabel').textContent = kind === 'tab' ? 'Recording tab audio' : 'Recording microphone';
+  // The "only record what you have the right to use" note shows on the first recording only.
+  let seenNote = false;
+  try { seenNote = !!localStorage.getItem('slowdown.recNote'); localStorage.setItem('slowdown.recNote', '1'); } catch (e) { /* private mode: show it */ }
+  $('#recNote').hidden = seenNote;
   $('#rec').hidden = false;
   const data = new Float32Array(1024);
   rec.timer = setInterval(() => {
