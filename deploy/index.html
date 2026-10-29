@@ -357,6 +357,21 @@
       background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.3); font-size: 15px; }
     .phone-tip p { margin: 0; }
     .phone-tip .btn { justify-self: end; min-height: 38px; padding: 0 18px; font-size: 16px; }
+    /* Toolbar in three full-width rows: files, loops and undo / speed presets / zoom, panels and help. */
+    .toolbar { padding: 6px 8px; gap: 6px; }
+    .toolbar > .tg { min-width: 0; }
+    .toolbar > div.tg:nth-of-type(1) { order: 1; flex: 4 1 0; }
+    .toolbar > div.tg:nth-of-type(2) { order: 1; flex: 3 1 0; }
+    .toolbar > div.tg:nth-of-type(3) { order: 1; flex: 2 1 0; }
+    .toolbar > div.tg:nth-of-type(5) { order: 2; flex: 1 0 100%; }
+    .toolbar > div.tg:nth-of-type(4) { order: 3; flex: 2 1 0; }
+    .toolbar > div.tg:nth-of-type(6) { order: 3; flex: 4 1 0; }
+    .toolbar > div.tg:nth-of-type(7) { order: 3; flex: 2 1 0; }
+    .toolbar .tg > .tb { flex: 1 1 0; min-width: 0; height: 44px; padding: 0 2px; font-size: 16px; }
+    .toolbar .tb.sp { font-size: 15px; }
+    .toolbar .tb svg { width: 24px; height: 24px; }
+    .tb.support { gap: 0; padding: 0 2px; }
+    .tb.support span { display: none; }
   }
   /* Short phones (iPhone SE and similar): a little less spacing so everything still fits. */
   @media (max-width: 600px) and (max-height: 700px) {
@@ -2188,10 +2203,27 @@ async function decode(arrayBuffer) {
   }
 }
 
-async function importBlob(blob, title, source) {
+async function importBlob(original, title, source) {
   $('#waveBusy').hidden = false;
   try {
-    const buffer = await decode(await blob.arrayBuffer());
+    // Keep a full in-memory copy: on iPhone a picked File can be just a reference to a temporary file that iOS
+    // deletes later, which made saved songs unreadable a day or two after importing them.
+    const bytes = await original.arrayBuffer();
+    const blob = new Blob([bytes], { type: original.type || '' });
+    const buffer = await decode(bytes);
+    // A song whose saved audio was lost gets it back when the same file is opened again (loops and markers kept).
+    const lost = songs.find((s) => s.audioLost && s.title === title);
+    if (lost) {
+      delete lost.audioLost;
+      lost.duration = buffer.duration;
+      buffers.set(lost.id, buffer);
+      await Store.putAudio(lost.id, blob);
+      await Store.putSong(lost);
+      await selectSong(lost.id);
+      toast('“' + title + '” is back, with its loops and markers.', 4000);
+      updateStorage();
+      return lost;
+    }
     const song = { id: uid(), title, source, addedAt: Date.now(), duration: buffer.duration, settings: defaultSettings(), markers: [], loops: [] };
     buffers.set(song.id, buffer);
     songs.splice(1, 0, song); // just below the example
@@ -2232,13 +2264,26 @@ async function selectSong(id) {
     try {
       const blob = await Store.getAudio(id);
       if (!blob) throw new Error('missing');
-      buffer = await decode(await blob.arrayBuffer());
+      let bytes;
+      try { bytes = await blob.arrayBuffer(); } catch (e) { throw new Error('lost'); }
+      if (!bytes.byteLength) throw new Error('lost');
+      const fromPickedFile = typeof File !== 'undefined' && blob instanceof File;
+      try { buffer = await decode(fromPickedFile ? bytes.slice(0) : bytes); } catch (e) { if (fromPickedFile) throw new Error('lost'); throw e; }
+      // Songs saved by older versions point at the picked file; replace that with a real copy while it still reads.
+      if (fromPickedFile) Store.putAudio(id, new Blob([bytes], { type: blob.type || '' }));
       buffers.set(id, buffer);
     } catch (e) {
       $('#waveBusy').hidden = true;
-      toast(e && e.message === 'missing'
-        ? 'That song’s audio is no longer stored in this browser. Import it again.'
-        : 'Couldn’t open that song: ' + (e && e.message ? e.message : 'unknown error') + '.', 10000);
+      const why = e && e.message;
+      if (why === 'lost') {
+        song.audioLost = true;
+        Store.putSong(song);
+        toast('This phone deleted the saved audio for “' + song.title + '”. Open the same file again with the folder button and it comes back with its loops and markers.', 12000);
+      } else {
+        toast(why === 'missing'
+          ? 'That song’s audio is no longer stored in this browser. Import it again.'
+          : 'Couldn’t open that song: ' + (why || 'unknown error') + '.', 10000);
+      }
       return;
     }
     $('#waveBusy').hidden = true;
