@@ -1253,6 +1253,8 @@ const Store = {
 
 // iPhone, iPad (iPadOS reports itself as a Mac with touch) and iPod.
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// Recording another browser tab needs desktop screen sharing; no phone or tablet browser offers it.
+const CAN_CAPTURE_TAB = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !IS_IOS && !/Android|Mobile/i.test(navigator.userAgent);
 
 // ---------------------------------------------------------------- audio engine
 // Playback normally runs through Signalsmith Stretch (see enableHQ below), a high-quality phase-vocoder
@@ -3707,7 +3709,14 @@ function wire() {
   const stored = (await Store.songs()) || [];
   stored.sort((a, b) => b.addedAt - a.addedAt);
   songs = [example.song, ...stored];
-  if (!Store.db) $('#libraryHint').textContent = 'Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button.';
+  if (!CAN_CAPTURE_TAB) {
+    // Phones and tablets can't capture another tab: hide that button and point to the microphone instead.
+    $('#captureTab').hidden = true;
+    $('#libraryHint').textContent = 'Open a file with the folder button, or play a song out loud and record it with the microphone button. Songs, loops and markers are kept in this browser.';
+  }
+  if (!Store.db) $('#libraryHint').textContent = CAN_CAPTURE_TAB
+    ? 'Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button.'
+    : 'Open a file with the folder button, or play a song out loud and record it with the microphone button.';
   $('#waveBusy').hidden = true;
   await selectSong(stored.length ? stored[0].id : 'example');
   if (!current) await selectSong('example');
