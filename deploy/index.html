@@ -179,6 +179,8 @@
   .ptab { flex: none; border: 0; border-right: 1px solid var(--line-soft); background: none; padding: 7px 14px 9px; line-height: 18px; cursor: pointer; white-space: nowrap; color: #444; }
   .ptab[aria-selected="true"] { background: var(--window); color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 #555; }
   .ptab.close { margin-left: auto; border-right: 0; border-left: 1px solid var(--line-soft); }
+  /* Phones: the bottom sheet covers the transport, so its header carries a play / stop button. */
+  .ptab.pplay, .ptab .phone-only { display: none; }
   .pbody { padding-block: 12px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 10px; min-width: 0; }
   .pbody h4 { margin: 4px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 
@@ -371,6 +373,14 @@
     .prow .pill.small { min-width: 38px; height: 34px; font-size: 14px; padding: 0 3px; }
     .cgroup.pitch { gap: 4px; }
     .prow { gap: 2px; }
+    .ptab { padding: 12px 12px 13px; font-size: 15px; }
+    .ptab .wide-only { display: none; }
+    .ptab .phone-only { display: inline; }
+    .ptab.pplay { display: flex; align-items: center; justify-content: center; margin-left: auto; min-width: 58px; border-right: 0; border-left: 1px solid var(--line-soft); color: #222; }
+    .ptab.pplay svg { width: 26px; height: 26px; }
+    .ptab.pplay.on { background: #ffd23f; }
+    .ptab.close { margin-left: 0; min-width: 58px; font-size: 24px; font-weight: 600; color: #222; }
+    @media (max-width: 360px) { .ptab { padding-left: 7px; padding-right: 7px; font-size: 14px; } .ptab.pplay, .ptab.close { min-width: 46px; } }
     .app > .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; max-height: 62%; border-top: 1px solid var(--line);
       box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28); padding-bottom: env(safe-area-inset-bottom, 0px); }
     .c-phone { grid-area: ph; display: flex; gap: 8px; }
@@ -562,10 +572,11 @@
 
   <section class="panel" id="panel" aria-label="Tools">
     <div class="panel-head" role="tablist">
-      <button class="ptab" type="button" role="tab" data-tab="library">Library &amp; loops</button>
+      <button class="ptab" type="button" role="tab" data-tab="library">Library<span class="wide-only"> &amp; loops</span></button>
       <button class="ptab" type="button" role="tab" data-tab="eq">EQ</button>
       <button class="ptab" type="button" role="tab" data-tab="fx">Pan</button>
-      <button class="ptab" type="button" role="tab" data-tab="keys">Shortcuts</button>
+      <button class="ptab" type="button" role="tab" data-tab="keys"><span class="wide-only">Shortcuts</span><span class="phone-only">Help</span></button>
+      <button class="ptab pplay" type="button" id="panelPlay" title="Play / stop" aria-label="Play"><svg aria-hidden="true"><use href="#i-play"/></svg></button>
       <button class="ptab close" type="button" id="panelClose" aria-label="Close panel">✕</button>
     </div>
 
@@ -2875,6 +2886,7 @@ function frame(ts) {
       }
     }
     $('#playBtn').classList.toggle('on', engine.playing);
+    syncPanelPlay();
     const s = Math.floor(now);
     if (s !== lastSecond) { lastSecond = s; current.settings.pos = now; }
   }
@@ -2910,6 +2922,15 @@ function stop() {
   engine.pause();
   seek(wasPlaying ? startPoint() : S().loop.on && S().loop.a != null ? S().loop.a : 0);
   saveSoon();
+}
+let panelPlayState = null;
+function syncPanelPlay() {
+  if (panelPlayState === engine.playing) return;
+  panelPlayState = engine.playing;
+  const b = $('#panelPlay');
+  b.classList.toggle('on', engine.playing);
+  b.setAttribute('aria-label', engine.playing ? 'Stop' : 'Play');
+  b.querySelector('use').setAttribute('href', engine.playing ? '#i-pause' : '#i-play');
 }
 function togglePlay() { if (engine.playing) stop(); else play(); }
 
@@ -3695,6 +3716,7 @@ function wire() {
   $('#markerName').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') e.target.blur(); });
   $('#playBtn').addEventListener('click', play);
   $('#pauseBtn').addEventListener('click', () => { if (engine.playing) stop(); });
+  $('#panelPlay').addEventListener('click', () => { if (engine.playing) stop(); else { view.follow = true; play(); } });
   $('#stopBtn').addEventListener('click', stop);
   $('#back5').addEventListener('click', () => jumpMarker(-1));
   $('#fwd5').addEventListener('click', () => jumpMarker(1));
