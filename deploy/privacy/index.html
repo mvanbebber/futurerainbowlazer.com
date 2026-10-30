@@ -20,22 +20,32 @@
 </div></header>
 <main>
 <h1>Privacy</h1>
-<p class="note">Last updated October 29, 2026</p>
+<p class="note">Last updated October 30, 2026</p>
 <p>Slow Down Buddy is built so your music stays on your device. Here is exactly what happens with your information.</p>
 
 <h2>Your audio never leaves your device</h2>
 <ul class="ticks">
-<li>Songs you open, recordings you make, and your loops, markers and settings are stored in your browser on your device (using the browser's built-in storage). They aren't uploaded to us or anyone else.</li>
-<li>Recording a browser tab or your microphone only happens when you start it and approve it in your browser's prompt.</li>
-<li>Backups are files you save yourself; we never see them.</li>
+<li>Songs you open, recordings you make, and your loops, markers and settings are stored only in your browser on your device (in the browser's IndexedDB storage). They aren't uploaded to us or anyone else, and there's no server that could receive them.</li>
 <li>There are no accounts and no sign-up.</li>
+<li>Backups are files you download yourself; we never see them.</li>
 </ul>
 
+<h2>Microphone and screen sharing</h2>
+<ul class="ticks">
+<li>The app asks for your microphone only when you press the microphone button, and for screen sharing only when you press <strong>Record a website</strong>. Your browser shows its own permission prompt each time, and you choose which tab to share.</li>
+<li>When you share a tab, the app records only its sound. Browsers require a video track for tab sharing, but the app doesn't record or keep the picture, and sharing stops as soon as you stop recording.</li>
+<li>You can change or revoke these permissions at any time in your browser's site settings.</li>
+</ul>
+
+<h2>What's stored in your browser</h2>
+<p>Besides your library, the app keeps a few small settings in your browser's local storage: whether the keyboard view and the high-quality audio engine are on (<code>slowdown.keyboard</code>, <code>slowdown.hq</code>), whether you've seen the phone tip and the first-recording note (<code>slowdown.phoneTip</code>, <code>slowdown.recNote</code>), your changes to the demo song (<code>slowdown.demo</code>), and when you last made a backup (<code>slowdown.lastBackup</code>). No cookies are set.</p>
+<p><strong>Clearing your browser's history or site data deletes your library and these settings.</strong> Browsers can also clear site data on their own, for example Safari after 7 days without a visit, or any browser when the disk is nearly full. Use <strong>Back up library</strong> regularly to keep a copy.</p>
+
 <h2>Anonymous usage counts</h2>
-<p>We use <a href="https://www.goatcounter.com/">GoatCounter</a>, a privacy-friendly analytics service, to count visits and which features get used (for example “opened an MP3” or “made a loop”). It doesn't use cookies and doesn't collect personal information such as your name or email. It records things like the page visited, the referring site, browser and operating system, screen size and country. Ad and tracker blockers may block it, and that's fine.</p>
+<p>We use <a href="https://www.goatcounter.com/">GoatCounter</a>, a privacy-friendly analytics service, to count visits and which features get used. The counting script is served from this site. For each page view, and for events such as <code>played</code>, <code>slowed-down</code>, <code>used-loop</code>, <code>import-mp3</code> (the file type, never the file or its name), <code>recorded-website</code>, <code>recorded-mic</code>, <code>backup</code>, <code>open-feedback</code>, <code>feedback-sent</code>, <code>open-waitlist</code>, <code>waitlist-joined</code> and <code>tip-dismissed</code>, your browser sends GoatCounter the page or event name, the page title, the referring page, the page's query string (for example <code>?ref=reddit</code>), your screen width and a flag for automated browsers. Like any web request, it also carries your IP address and browser details, which GoatCounter uses to work out the browser, operating system and country. GoatCounter doesn't use cookies, and we don't receive your name, email or IP address from it. GoatCounter's own privacy policy, on <a href="https://www.goatcounter.com/">goatcounter.com</a>, explains how it handles this data. Ad and tracker blockers may block it, and that's fine.</p>
 
 <h2>Feedback and the Pro waitlist</h2>
-<p>If you send feedback or join the Pro waitlist, we receive what you type in the form (your message, and your email if you give it). The feedback form also includes your browser details, the app's current speed setting and the kind of song you have open (a file, a recording or the demo, never the song itself) to help us fix problems. These forms are handled by our host, Netlify. We use your email only to reply to you or to tell you when Pro launches, and we don't sell or share it. To have your submission deleted, send a request through the feedback form.</p>
+<p>If you send feedback or join the Pro waitlist, we receive what you type in the form (your message, and your email if you give it). The feedback form also includes your browser's user-agent string, the app's current speed setting and the kind of song you have open (a file, a recording or the demo, never the song itself or its name) to help us fix problems. These forms are handled by our host, Netlify, and kept in our Netlify account until we delete them. We use your email only to reply to you or to tell you when Pro launches, and we don't sell or share it. To have your submission deleted, send a request through the feedback form.</p>
 
 <h2>Hosting</h2>
 <p>The site is hosted by <a href="https://www.netlify.com/">Netlify</a>, which, like any web host, processes technical information such as IP addresses to deliver the site and keep it secure.</p>
