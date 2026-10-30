@@ -2,7 +2,8 @@
 
 **Product:** Slow Down Buddy, https://slowdownbuddy.com, a browser-based app for learning music by ear
 **Repository:** `mvanbebber/futurerainbowlazer.com`, branch `claude/transcribe-mac-iphone-app-0zmziq`
-**Prepared:** October 30, 2026, as a read-only audit. No code, configuration or behavior was changed to produce it.
+**Prepared:** October 30, 2026, as a read-only audit.
+**Updated:** October 30, 2026, after the fixes listed in §0.1. Sections below describe the code **as it is now**; findings that were fixed are marked **Fixed** with a pointer to the commit.
 **Purpose:** a self-contained briefing for an independent review (for example by ChatGPT or an attorney).
 
 ### How to read this report
@@ -34,23 +35,72 @@ Nothing in this report is legal advice. Where it touches law (copyright, licensi
   - **Main engine:** Signalsmith Stretch 1.3.2 (MIT), a WebAssembly AudioWorklet.
   - **Custom extension:** an attack-preserving time warp that keeps drum and note onsets crisp below 45% speed.
   - **Fallback:** a hand-written WSOLA engine on the deprecated `ScriptProcessorNode`.
-- **Third-party code:** all third-party code shipped to browsers is permissively licensed (MIT, BSD-3-Clause, Apache-2.0). **No GPL, AGPL or LGPL code is shipped by the web app [Code].** The notices file is incomplete for the BSD and Apache components (§2.3).
-- **Repository hygiene problem:** the repository tracks Python wheels, including numpy (16.7 MB) and a soundfile wheel that typically bundles LGPL libsndfile, plus an old project ZIP and screenshots. None are used by the app; all were committed by accident (§2.4).
+- **Third-party code:** shipped code is permissively licensed (MIT, BSD-3-Clause, Apache-2.0, ISC, zlib), **except `codec-parser` 2.5.0 inside `flac-decoder.min.js`, which is LGPL-3.0-or-later** (missed by the first version of this review). Full notices, license texts and the corresponding source packages are now published at `/licenses/` (§2). No GPL or AGPL code is shipped [Code].
+- **Repository hygiene:** stray Python wheels, an old project ZIP and screenshots were removed from the current tree. **The repository is public, and those files remain in its Git history** until history is rewritten, which needs the owner's approval (§2.4).
 - **Audio never leaves the device [Code].**
-  - **Network calls made by the app:** GoatCounter analytics (a third-party script loaded without integrity checking), Netlify Forms (feedback and waitlist), and the local `demo.mp3`.
+  - **Network calls made by the app:** GoatCounter analytics (now from a pinned, self-hosted copy of its script), Netlify Forms (feedback and waitlist), and the local `demo.mp3`. A Content-Security-Policy limits connections to the site itself and the GoatCounter endpoint.
   - **Tab recording:** uses the browser's standard `getDisplayMedia` screen-share prompt and records what the tab plays. It does not download source media, intercept network streams or decrypt anything.
-- **Main risks:**
-  1. **Data loss:** browser storage can be cleared; Safari evicts storage after 7 days without a visit. An iOS bug that made saved songs unreadable was fixed on Oct 29–30, but earlier songs may still be affected.
-  2. **Memory on phones** with long songs.
-  3. **Third-party analytics script** without integrity checking.
-  4. **Copyright and platform-terms exposure** from how the recording feature is marketed.
-  5. **License-notice gaps.**
-  6. **Visual similarity to Transcribe!**, which the owner deliberately modeled the interface on.
+- **Main remaining risks:**
+  1. **Data loss:** browser storage can be cleared; Safari may evict it after 7 days without a visit. Warnings and backup reminders are now clearer, but there is still no automatic backup.
+  2. **Memory on phones** with very long songs (reduced, see §8.2; not tested on real devices).
+  3. **Copyright and platform-terms exposure** from how the recording feature is marketed (§3).
+  4. **LGPL obligations** for `codec-parser`, now addressed by notices and source packages, but worth confirming with counsel (§2.3).
+  5. **Visual similarity to Transcribe!**, which the owner deliberately modeled the interface on.
+  6. **Third-party script and missing CSP: fixed** (§4.3).
 - **Monetization fit:**
   - A one-time **$39.99 Pro** purchase is technically easy to add without accounts, using a merchant-of-record license key.
   - **Exporting processed audio is low-to-moderate effort,** because the engine already renders correctly in `OfflineAudioContext`.
   - **Chord detection is moderate effort** for a basic version and high effort for a good one.
   - An iOS App Store version could not simply honor web-purchased licenses without care for Apple's rules **[Verify]**.
+
+### 0.1 Fixes made on October 30, 2026
+
+All of these are in commits on `claude/transcribe-mac-iphone-app-0zmziq`, tested as described in §0.2.
+
+| Area | Fix | Commit |
+|---|---|---|
+| Repository | Removed tracked Python wheels, `SlowDown.zip` and three screenshots; `.gitignore` blocks them at the repository root. History not rewritten. | `a47a04f` |
+| Licenses | Complete `THIRD-PARTY-NOTICES.txt` with full MIT, BSD-3-Clause (libFLAC, libopus with the Opus patent notice), zlib (puff), ISC (GoatCounter) and CC0 texts; full Apache-2.0, LGPL-3.0 and GPL-3.0 texts under `/licenses/`; corresponding source packages for `codec-parser`, the FLAC/Opus decoders and their common package, with SHA-256 sums; new `/licenses/` page linked from the app and every page footer. | `795ed26` |
+| Analytics | `count.js` self-hosted at `/vendor/goatcounter-count.js` (unmodified, from `arp242/goatcounter` commit `c031008`, SHA-256 `792b7abd…`). | `795ed26` |
+| Security headers | Content-Security-Policy added in `deploy/_headers` (scripts from self, inline, `blob:` and `wasm-unsafe-eval` only; connections to self and `slowdownbuddy.goatcounter.com` only; `frame-ancestors 'none'`; `object-src 'none'`; `form-action 'self'`). | `795ed26` |
+| Restore | Backups are rebuilt from an allow-list of validated, clamped fields (no `Object.assign`); bad entries skipped; the ZIP reader bounds-checks offsets and sizes and verifies inflated sizes. | `378bf2c` |
+| Data safety | Demo-song edits are saved; storage line explains that clearing browser data deletes the library, suggests the Home Screen on iOS, and shows the last backup date and songs added since. | `378bf2c` |
+| Memory | Phones keep 1 decoded song (plus the demo) instead of 3; undo history no longer keeps decoded audio. | `378bf2c`, `49ac8d4` |
+| Rendering | Static waveform layer cached; only the playhead is drawn per frame (pixel-identical output). | `98923e6` |
+| Bugs | "Claude preview" error message replaced. | `378bf2c` |
+| Discoverability | "Record a website" text label on desktop screens ≥1400 px with a mouse. | `f121b8d` |
+| Legal pages | Privacy and Terms updated to match actual behavior (storage keys, analytics payload, permissions, retention, recording responsibility). | `b2ba09c` |
+
+Not changed, by design: the pause/stop behavior (Pause and Stop return to where Play was pressed) is a deliberate owner decision from Oct 27 and was left as is.
+
+### 0.2 How the fixes were tested
+
+**Automated, in headless Chromium (Playwright) against a local server that applies the same headers as Netlify. Not tested on physical devices.**
+
+- **43 checks in one run, all passed.** They covered:
+  - **Imports:** MP3, WAV, FLAC, M4A (AAC, ALAC, Opus), OGG, WebM and MP4 video.
+  - **Persistence:** the library survives a reload.
+  - **Speeds:** 25/50/70/100/150/200%, with audible output and the playhead moving at the expected rate (within 6%).
+  - **Attack preservation** data loaded.
+  - **Pitch,** measured on a 440 Hz tone: +12 → 880.2 Hz, −12 → 220.7 Hz, +7 → 659.5 Hz, +50 cents → 454.9 Hz.
+  - **Channel modes and EQ:** karaoke cancels centered audio (0.0624 → 0.0000 RMS), left-only plays, an EQ cut reduces a 440 Hz tone.
+  - **Transport, seek and loop wrap.**
+  - **Markers** with undo and redo.
+  - **Recording:** microphone (simulated device), and **tab recording** (Chromium's automatic tab selection, no real picker).
+  - **Backup:** a full backup → delete-all → restore round trip.
+  - **Layouts** for iPhone 15 Pro, iPhone SE, Pixel 7, iPad portrait and landscape, and desktop at 1280 and 1920 px.
+  - **Cleanliness:** no CSP violations, console errors or failed requests.
+- **Forced-fallback decoding** (simulating Safari's refusals) of FLAC, ALAC, Opus-in-M4A and AAC under the CSP.
+- **Analytics:** under the CSP, the page view and all app events reached the GoatCounter endpoint. The endpoint was simulated, because this environment cannot reach goatcounter.com.
+- **Hostile backups:**
+  - prototype-pollution keys, out-of-range values, bad IDs and paths: sanitized, or skipped and counted
+  - non-JSON, wrong-app, garbage and truncated ZIPs: rejected with a message
+  - deflate-compressed backups and pre-rename (`SlowDown`) backups: still restore
+- **Waveform cache:** the canvas was pixel-identical to the previous version in 10 states (loop, zoom, drag selection, growing loop band, adding/moving/deleting markers, whole-song view, switching songs).
+  - Draw time per frame: 0.93 → 0.11 ms (desktop) and 1.9 → 0.21 ms (iPhone size at 4× CPU slowdown).
+- **Memory:** renderer memory growth after importing three 5-minute songs fell from about 500 MB to about 400 MB (desktop) and about 300 MB (phone emulation).
+
+**Not tested:** real iPhone, iPad, Android or Mac/Windows hardware; Safari and Firefox (only Chromium is available here); a real tab-picker interaction; the live Netlify deployment, which this environment cannot reach.
 
 ---
 
@@ -66,8 +116,8 @@ Nothing in this report is legal advice. Where it touches law (copyright, licensi
 | Opus fallback decoder | `deploy/opus-decoder.min.js`: `opus-decoder` 0.7.12 (MIT), containing libopus (BSD-3-Clause). Loaded on demand. |
 | MP4/M4A fallback | `deploy/m4a-decoder.js`, written for this project: an MP4 demuxer, an Apple Lossless (ALAC) decoder ported from Apple's Apache-2.0 reference decoder, AAC via WebCodecs or by re-wrapping as ADTS, and Opus via the decoder above. |
 | ZIP backup | Custom ZIP writer (stored, CRC-32) and reader (stored, or deflate via `DecompressionStream`) inside `index.html`. |
-| Analytics | GoatCounter `count.js`, loaded from `https://gc.zgo.at/count.js`. |
-| Hosting | Netlify static hosting (`netlify.toml`, `deploy/_headers`) plus Netlify Forms. |
+| Analytics | GoatCounter `count.js`, self-hosted unmodified at `deploy/vendor/goatcounter-count.js` (pinned to upstream commit `c031008`), reporting to `https://slowdownbuddy.goatcounter.com/count`. |
+| Hosting | Netlify static hosting (`netlify.toml`, `deploy/_headers` with Permissions-Policy and Content-Security-Policy) plus Netlify Forms. |
 | Guide and legal pages | Static HTML (`deploy/*/index.html`) sharing `deploy/guides.css`. |
 | Native app (not shipped) | `SlowDownBuddy/`: a Swift/SwiftUI project for macOS 14+ and iOS 17+, generated with XcodeGen (`project.yml`). Uses AVFoundation, Accelerate, ScreenCaptureKit (macOS system audio), ReplayKit (iOS broadcast extension), SwiftUI and Observation. **It has never been compiled or shipped [Owner]**; a GitHub Actions workflow exists to build it. |
 
@@ -93,7 +143,7 @@ Nothing in this report is legal advice. Where it touches law (copyright, licensi
 - The playhead position is estimated on the main thread from the schedule segments.
 
 **Visuals and analysis:**
-- **Waveform:** a peaks array pre-computed per song (`computePeaks`), drawn on `<canvas>`.
+- **Waveform:** a peaks array pre-computed per song (`computePeaks`). The waveform, loop band and marker lines are drawn into a cached offscreen canvas and only the playhead is drawn each frame.
 - **Keyboard view:** notes at the playhead come from a 32,768-point FFT in JavaScript (`noteLevels`), run about every 180 ms while the keyboard is visible.
 - **Onset detection:** runs once per song load, using spectral flux on half-sample-rate audio with a 512-point FFT, in slices so the page stays responsive.
 
@@ -126,7 +176,7 @@ Nothing in this report is legal advice. Where it touches law (copyright, licensi
 | Store | Contents |
 |---|---|
 | IndexedDB database `slowdown`, version 1 | object store `songs` (keyPath `id`): song metadata (title, source, duration, settings, markers, loops, `audioLost` flag); object store `audio`: one `Blob` per song (the original file bytes or the compressed recording) |
-| localStorage | `slowdown.keyboard` (keyboard view on/off), `slowdown.hq` (high-quality engine on/off), `slowdown.phoneTip` (first-visit tip dismissed), `slowdown.recNote` (first-recording notice shown) |
+| localStorage | `slowdown.keyboard` (keyboard view on/off), `slowdown.hq` (high-quality engine on/off), `slowdown.phoneTip` (first-visit tip dismissed), `slowdown.recNote` (first-recording notice shown), `slowdown.demo` (the demo song's loops, markers and settings), `slowdown.lastBackup` (time of the last backup). GoatCounter's script reads `skipgc` only if a visitor opts out with `#toggle-goatcounter`. |
 | `navigator.storage.persist()` | requested on import and recording |
 | OPFS / Cache API | **not used** |
 
@@ -134,7 +184,8 @@ Nothing in this report is legal advice. Where it touches law (copyright, licensi
   - Imports and restores now store a full in-memory copy (`new Blob([arrayBuffer])`) instead of the picked `File`, or a slice of the backup ZIP. On iOS those can be references to temporary files that iOS later deletes [Owner reported the symptom].
   - Songs that can still be read are re-saved as copies when opened.
   - Songs whose audio is already lost are flagged `audioLost`. Re-opening the same file, matched by title, or restoring the backup again re-attaches the audio while keeping loops and markers.
-- **Undo/redo:** snapshot-based, up to 300 entries, in memory only.
+- **Undo/redo:** snapshot-based, up to 300 entries, in memory only. Undo steps for adding or deleting songs keep the compressed audio file, not the decoded audio.
+- **Restore validation:** `cleanBackupSong()`, `cleanSettings()`, `cleanMarkers()` and `cleanLoops()` rebuild every restored record from allowed fields; the demo record in localStorage goes through the same functions.
 
 ### 1.6 Offline and PWA [Code]
 
@@ -164,10 +215,10 @@ Nothing in this report is legal advice. Where it touches law (copyright, licensi
 
 **Weaknesses:**
 - **One ~3,800-line file** (≈300 KB, of which the inlined Signalsmith library is a large part): hard to maintain or test, and there are no automated tests in the repository. The Playwright checks used during development were ad-hoc scripts, not committed.
-- **Everything runs on the main thread,** apart from the AudioWorklet: decoding fallbacks, the FFTs, peak computation and full-canvas redraws every animation frame during playback.
+- **Most work runs on the main thread,** apart from the AudioWorklet: decoding fallbacks, the FFTs and peak computation. Per-frame drawing is now cheap (cached waveform layer).
 - **Memory-heavy design:** full decoded float audio plus copies (see §8).
 - **Single point of truth in browser storage,** with only manual ZIP backups.
-- **Third-party analytics script without Subresource Integrity, and no Content-Security-Policy** (see §4).
+- **Fixed:** the analytics script is now self-hosted and pinned, and a Content-Security-Policy is in place (see §4). The CSP still needs `'unsafe-inline'` for scripts, because the app is one HTML file with inline code.
 
 ---
 
@@ -181,15 +232,20 @@ There are no lockfiles because there is no package manager. These are all the th
 |---|---|---|---|---|
 | Signalsmith Stretch (C++ library + JS wrapper, compiled to WASM) | 1.3.2 | inlined in `index.html` | MIT (header inline, lines ~687–695) | Keep the copyright notice and permission notice: **met** inline and in `THIRD-PARTY-NOTICES.txt` |
 | `@wasm-audio-decoders/flac` | 0.2.11 | `flac-decoder.min.js` | MIT (Ethan Halsall) | Keep the notice: **met** in the notices file |
-| ↳ libFLAC (inside the WASM) | not recorded | same file | BSD-3-Clause (Xiph.Org) | **Reproduce the copyright notice, the 3 conditions and the disclaimer** in documentation for binary redistribution. The notices file names libFLAC and BSD-3 but **does not reproduce the BSD text: gap** |
+| ↳ libFLAC (inside the WASM) | not recorded upstream | same file | BSD-3-Clause (Xiph.Org) | Reproduce notice, conditions and disclaimer: **met** (full text in the notices file) |
+| ↳ codec-parser (bundled JS) | 2.5.0 | same file | **LGPL-3.0-or-later** | Provide the LGPL-3.0 and GPL-3.0 texts, notice, and corresponding source; allow replacement of the library. **Met:** texts and source packages at `/licenses/`; the decoder is a separate, replaceable file. Confirm sufficiency with counsel **[Verify]** |
 | `opus-decoder` | 0.7.12 | `opus-decoder.min.js` | MIT (Ethan Halsall) | Met |
-| ↳ libopus (inside the WASM) | not recorded | same file | BSD-3-Clause (Xiph.Org and contributors) | Same BSD gap as libFLAC |
-| ↳ other code compiled into these decoders (for example Emscripten runtime, shared "common" package) | unknown | same files | likely MIT / BSD-style | **[Verify]** against the upstream repository's license files |
-| ALAC decoder (port) | n/a | `m4a-decoder.js` | Apache-2.0 (derived from Apple's ALAC reference decoder; structure informed by alac.js) | Apache-2.0 §4: give recipients **a copy of the license** (the notices file has a summary and URL, not the full text: **likely gap**), mark modified files (done in notices), keep attribution notices, and include any upstream NOTICE file (**[Verify]** whether Apple's `macosforge/alac` has one). alac.js's license: npm says Apache-2.0; some sources say MIT **[Verify]** |
-| GoatCounter `count.js` | unpinned (always latest) | loaded from `gc.zgo.at` at runtime | EUPL-1.2 for the GoatCounter project **[Verify]**; loaded from the vendor, not redistributed | Not redistributed by you, so redistribution duties likely don't apply **[Verify]**. Supply-chain risk discussed in §4 |
+| ↳ libopus (inside the WASM) | not recorded upstream | same file | BSD-3-Clause (Xiph.Org and contributors), plus royalty-free patent licenses | **Met** (full text and patent notice in the notices file) |
+| ↳ `@wasm-audio-decoders/common` | 9.0.7 | both decoder files | MIT | Met |
+| ↳ simple-yenc | 1.x | both decoder files | MIT | Met |
+| ↳ puff (Mark Adler, WASM inflate) | 2.3 | both decoder files | zlib-style | Met (notice reproduced) |
+| ↳ Emscripten runtime glue | n/a | `index.html` and decoders | MIT | Met (notice included) |
+| `@eshaz/web-worker` | 1.2.2 | **not bundled** (only required in Node/CommonJS builds) | Apache-2.0 | None |
+| ALAC decoder (port) | n/a | `m4a-decoder.js` | Apache-2.0 (derived from Apple's ALAC reference decoder; structure informed by alac.js) | Copy of the license, statement of changes and attribution: **met**. Apple's `macosforge/alac` repository has **no NOTICE file** (checked). alac.js's own license (npm says Apache-2.0) **[Verify]** |
+| GoatCounter `count.js` | upstream commit `c031008` | `vendor/goatcounter-count.js` | **ISC** (stated in the file; the rest of GoatCounter is EUPL-1.2 but isn't shipped) | Keep the notice: **met** |
 | Demo recording `demo.mp3` | n/a | `deploy/demo.mp3` | Stated CC0 1.0 (Kimiko Ishizaka, *The Open Well-Tempered Clavier*) | None under CC0; provenance should be confirmed **[Verify]**: the file was supplied by the owner; the notices file asserts CC0 |
 
-**No GPL, AGPL, LGPL or other copyleft code is shipped by the web app [Code].**
+**Copyleft:** one LGPL-3.0-or-later component (`codec-parser`, inside the FLAC fallback decoder) is shipped; no GPL or AGPL code [Code]. The first version of this review missed it. The minified decoder files were confirmed byte-for-byte identical to the published npm builds (opus with its source-map comment removed).
 
 **Fonts, icons and graphics [Code]:**
 - **Fonts:** system fonts only (`system-ui`, `-apple-system`, `ui-monospace`). No web fonts are loaded.
@@ -203,17 +259,21 @@ The `SlowDownBuddy/` Swift sources use only Apple system frameworks; there are n
 
 ### 2.3 Problems and gaps in licensing
 
-1. **Incomplete notices:** `deploy/THIRD-PARTY-NOTICES.txt` lacks the full BSD-3-Clause text for libFLAC and libopus, and the full Apache-2.0 text for the ALAC port. **[Code]** Easy to fix: add the full texts and the exact library versions.
-2. **Versions of bundled C libraries not recorded:** the libFLAC and libopus versions inside the WASM aren't documented [Code].
-3. **Provenance of the minified vendor files:** they were copied from npm packages during development, so there is no lockfile or checksum record. Record the source URLs and SHA-256 hashes [Code].
-4. **Notices not linked from the app UI:** the Terms page links to `/THIRD-PARTY-NOTICES.txt`, which is reasonable. Some licenses want notices "in the documentation and/or other materials" [Verify sufficiency].
-5. **AI-assisted authorship:** much of the code was written with an AI coding assistant, for example the ALAC port written from the reference implementation [Owner context]. Two questions for counsel [Verify]:
+1. **Fixed: incomplete notices.** Full texts for every license are now in `THIRD-PARTY-NOTICES.txt` and `/licenses/`.
+2. **Partly open: versions of the bundled C libraries.** The wasm-audio-decoders packages don't state the exact libFLAC and libopus versions they compile [Verify upstream].
+3. **Fixed: provenance.** Package versions are recorded, the decoder files match npm byte-for-byte, the source packages are published with SHA-256 sums, and the GoatCounter script is pinned to a commit with its hash.
+4. **Fixed: notices accessible.** `/licenses/` is linked from the app's Help tab and from every page footer.
+5. **New, addressed: LGPL `codec-parser`.**
+   - Obligations met by the notices, the license texts, the source packages, and the decoder being a separately loaded, replaceable file.
+   - **Counsel should confirm** this satisfies LGPL-3.0 §4 for a minified web bundle [Verify].
+   - Alternative if preferred: replace the FLAC fallback with a decoder that doesn't bundle `codec-parser`.
+6. **AI-assisted authorship:** much of the code was written with an AI coding assistant, for example the ALAC port written from the reference implementation [Owner context]. Two questions for counsel [Verify]:
    - Copyrightability and ownership of AI-assisted code under current US Copyright Office guidance.
    - Whether any generated code reproduces third-party code closely enough to carry its license. The ALAC port is acknowledged as derived and licensed accordingly.
 
 ### 2.4 Unrelated files committed to the repository [Code]
 
-These are **tracked in git** but not part of the app:
+**Fixed in the current tree** (`a47a04f`): these were tracked in git but not part of the app, and have been removed:
 
 | File | Size | Notes |
 |---|---|---|
@@ -223,11 +283,11 @@ These are **tracked in git** but not part of the app:
 | `SlowDown.zip` | 53 KB | An archive of the earlier native project ("SlowDown") |
 | `desktop.png`, `phone.png`, `pitch.png` | ~100–220 KB each | Development screenshots |
 
-These were committed accidentally during development: tool downloads written into the working directory. If the repository is or becomes **public**, it is redistributing third-party binaries, including possibly LGPL ones, without notices. **Recommendation:** remove them from the repository, and rewrite history if the repository is public or the size matters. They are not served by the website, since Netlify publishes only `deploy/`.
+They were committed accidentally during development: tool downloads written into the working directory. **The repository is public** (confirmed), so these files, including the wheels that bundle third-party native libraries, possibly LGPL ones, **are still downloadable from Git history**. Removing them from history requires rewriting history and force-pushing, which **needs the owner's approval**; it would also change commit hashes for anyone with a clone. They were never served by the website, since Netlify publishes only `deploy/`.
 
 ### 2.5 Would selling a Pro version create licensing obligations?
 
-- **The current components allow commercial use** (MIT, BSD-3, Apache-2.0). Selling Pro creates no new copyleft obligations; you must keep the notices (fix §2.3) and not use contributors' names for endorsement (BSD-3 clause 3).
+- **The current components allow commercial use** (MIT, BSD-3, Apache-2.0, ISC, zlib, and LGPL-3.0 for `codec-parser`). Selling Pro creates no new copyleft obligations for the app's own code. Keep the notices, keep offering the LGPL source and keep the decoder replaceable, and don't use contributors' names for endorsement (BSD-3 clause 3).
 - **Watch future Pro dependencies:**
   - **MP3 encoders:** LAME and its ports such as lamejs are **LGPL**. Shipping them in a web page is possible but brings LGPL obligations (replaceability, source offer). Alternatives: WAV export (no encoder), or WebCodecs `AudioEncoder` (AAC/Opus) where supported.
   - **FFmpeg.wasm:** LGPL, or GPL depending on the build.
@@ -301,8 +361,8 @@ Yes. Recordings, imported files, loops and markers live only in the user's brows
 |---|---|---|
 | Audio files, recordings | IndexedDB `audio` | **No.** Only inside a backup ZIP the user downloads |
 | Song metadata, loops, markers, settings | IndexedDB `songs` | No |
-| UI preferences (4 keys) | localStorage | No |
-| Page views and feature events | GoatCounter | **Yes:** path, referrer, user agent, screen size, and the country derived from IP by GoatCounter. Event names: `import-<ext>`, `recorded-website`, `recorded-mic`, `backup`, `open-feedback`, `open-waitlist`, `feedback-sent`, `waitlist-joined`, `played`, `slowed-down`, `used-loop`, `tip-dismissed` |
+| UI preferences, demo edits, last-backup time (6 keys) | localStorage | No |
+| Page views and feature events | GoatCounter (script self-hosted) | **Yes:** path or event name, page title, referrer, query string, screen width and a bot flag; the request also carries the IP address and user agent, from which GoatCounter derives browser, OS and country. Event names: `import-<ext>`, `recorded-website`, `recorded-mic`, `backup`, `open-feedback`, `open-waitlist`, `feedback-sent`, `waitlist-joined`, `played`, `slowed-down`, `used-loop`, `tip-dismissed` |
 | Feedback form | Netlify Forms (POST to `/`) | **Yes:** message, optional email, and a `context` field with the **full user agent**, the current song's source type (file / tab / mic / example) and the current speed |
 | Pro waitlist form | Netlify Forms | **Yes:** email (required), checked features, free text |
 | Demo song | `GET /demo.mp3` from the same origin | Request only |
@@ -323,45 +383,54 @@ Yes. Recordings, imported files, loops and markers live only in the user's brows
   - User-controlled strings (song titles, marker and loop names, file names, restored backup contents) are written with `textContent` or `.value`.
   - The `innerHTML` uses found are constant strings or app-computed numbers (storage line, EQ labels, icons).
   - **No direct XSS path found.**
-- **Restore from backup:**
-  - Parses JSON from a user-supplied ZIP and `Object.assign`s fields onto song objects.
-  - A crafted backup could include a `__proto__` key. With `Object.assign` that sets the object's prototype, which is low impact here; consider allow-listing fields.
-  - The ZIP reader trusts offsets and sizes; a malformed ZIP fails with an error, not code execution.
-- **Third-party script (main risk):**
-  - GoatCounter's `count.js` loads from `gc.zgo.at` **without Subresource Integrity and unpinned**, and runs with full page privileges.
-  - If that domain were compromised, the script could read IndexedDB, meaning users' audio, and send it out.
-  - **Recommendation:** self-host a pinned copy of `count.js`, or add an SRI hash with a pinned version.
-- **No Content-Security-Policy:**
-  - Adding one is advisable. It must allow:
-    - inline scripts, or hash or nonce them
-    - `blob:` for the AudioWorklet
-    - `'wasm-unsafe-eval'` for WebAssembly
-    - `gc.zgo.at` and the GoatCounter endpoint
-    - `form-action 'self'`
-  - Also consider `frame-ancestors 'none'`; clickjacking risk is low.
+- **Restore from backup (fixed, `378bf2c`):**
+  - Each record is rebuilt from an allow-list: types checked, numbers clamped, strings capped.
+  - IDs and audio paths must match strict patterns; unknown keys, including `__proto__`, are dropped.
+  - The ZIP reader rejects offsets or sizes outside the file, checks local-header signatures and verifies inflated sizes.
+  - Malformed files are rejected with a message, and damaged entries are skipped and counted.
+- **Third-party script (fixed, `795ed26`):**
+  - `count.js` is served from the site itself, pinned to an upstream commit and unmodified.
+  - It still runs with page privileges, but it can no longer change without a commit to this repository.
+- **Content-Security-Policy (added, `795ed26`):**
+  ```
+  default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:;
+  connect-src 'self' https://slowdownbuddy.goatcounter.com; img-src 'self' data: blob: https://slowdownbuddy.goatcounter.com;
+  media-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; manifest-src 'self'; object-src 'none';
+  base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  ```
+  - Even injected code can't send data anywhere except the site and the GoatCounter endpoint.
+  - `'unsafe-inline'` remains for scripts and styles because the app is a single HTML file with inline code. Moving to hashes or a nonce is possible but would need regenerating on every change.
 - **No `eval` or `new Function` in app code.** `URL.createObjectURL` is used for the worklet and downloads.
 - **Netlify Forms:** a honeypot field is present. No rate limiting or CAPTCHA [Verify Netlify spam filtering].
-- **Leftover user-facing text:** a recording error message says "Inside the Claude preview, recording is switched off; open Slow Down Buddy from your own site to record." This refers to the development tool and should be reworded [Code].
+- **Fixed: leftover user-facing text.** The recording error that mentioned the Claude preview now tells users to check their browser's permissions.
 
 ### 4.4 Data-loss risks
 
 - **All user data lives in browser storage:**
   - Clearing site data, "clear history", browser reinstalls, switching browsers or profiles, and private windows all lose it.
   - Safari can evict storage after 7 days without a visit for sites not added to the Home Screen [Verify current WebKit policy].
-  - The app shows a status line ("Kept permanently", "May be cleared", "Safari deletes this after 7 days…") and requests persistent storage.
+  - **The storage status line (improved, `378bf2c`)** now:
+    - says plainly that clearing history or site data deletes the library
+    - on iPhone/iPad, suggests adding the app to the Home Screen
+    - shows the last backup date and how many songs were added since
+  - **Persistent storage** (`navigator.storage.persist()`) is requested when the user imports or records. It isn't requested on every page load, because Firefox shows a permission prompt for it.
 - **iOS file-reference bug** (fixed Oct 29–30): songs imported or restored before the fix may already have lost their audio. They now show a clear message and can be re-linked [Code][Owner].
-- **No automatic backup or sync.** Backups are manual ZIP downloads.
+- **No automatic backup or sync.** Backups are manual ZIP downloads, now with a reminder of the last backup date.
+- **Demo-song edits** are now saved (localStorage, `378bf2c`).
 - **Storage quota:** large libraries can hit browser quotas. On a failed write, the app warns that a song "plays now but couldn't be saved".
 - **Undo history is lost on reload** (in memory only).
 
 ### 4.5 Privacy-policy disclosures
 
-The existing `/privacy/` page covers local storage, GoatCounter, the forms, Netlify and Venmo. Suggested additions:
-- **State the exact feedback `context` contents:** the page mentions "browser details… speed… kind of song". Spell out that the full user agent string is included.
-- **List the localStorage keys** and their purposes.
-- **Name the analytics event names** and say they include the imported file extension.
-- **Name GoatCounter as a processor:** where data is processed, and retention [Verify GoatCounter's terms].
-- **Data retention for form submissions** in Netlify, and how deletion requests are handled.
+**Updated (`b2ba09c`):** `/privacy/` now covers:
+- the localStorage keys and their purposes
+- that clearing browser data deletes the library
+- microphone and screen-sharing permissions
+- the exact analytics payload and event names
+- the full user-agent string in feedback
+- form retention in Netlify and deletion requests
+
+`/terms/` now says that being able to record something doesn't mean you're allowed to, that no service has authorized recording through the app, and that backups contain audio. Still open:
 - **Contact details:** currently "use the feedback form". A dedicated email may be expected under some laws [Verify].
 - **If the app is marketed to the EU or UK:** lawful basis, rights and international transfers [Verify].
 
@@ -377,7 +446,7 @@ The existing `/privacy/` page covers local storage, GoatCounter, the forms, Netl
   - Voice memos (M4A)
 - **Record a website tab** (desktop Chrome, Edge and Brave): saved straight to the library as "Captured tab".
 - **Record the microphone** (all platforms).
-- **Built-in demo:** Bach Prelude in C major (CC0), with 35 bar markers, 3 section markers and 3 saved loops.
+- **Built-in demo:** Bach Prelude in C major (CC0), with 35 bar markers, 3 section markers and 3 saved loops. Changes to it are now saved between visits.
 - **Recover lost audio:** re-opening a file with the same title re-links its audio, keeping loops and markers.
 
 ### 5.2 Playback and transport
@@ -599,10 +668,8 @@ This is the acquisition engine. The traction to date (§11) came from these feat
 ## 8. Performance and reliability
 
 ### 8.1 CPU
-- **Full-canvas redraws on every animation frame during playback:** the ruler and waveform (`drawRuler` + `drawWave`) are fully redrawn each frame (~60 fps), including all marker flags and the loop band. On phones this is a likely battery and CPU cost. Improvements:
-  - layered canvases (a static waveform layer plus a moving playhead layer)
-  - cached rendered tiles
-  - redraw only when the view moves
+- **Waveform drawing (improved, `98923e6`):** the static waveform layer is cached, and only the playhead is drawn per frame. Measured: 0.93 → 0.11 ms per frame on desktop, and 1.9 → 0.21 ms on an iPhone-sized page at 4× CPU slowdown.
+- **The ruler (`drawRuler`) is still fully redrawn each frame:** about 0.35 ms on desktop and 1.5 ms at 4× slowdown. It could be cached the same way; its flag hit-boxes would need preserving.
 - **Keyboard analysis:** a 32,768-point FFT in JavaScript about every 180 ms while the keyboard is visible. Moderate on desktop, more noticeable on low-end phones. It could use a smaller FFT, a Web Worker, or run only when paused.
 - **One-time costs per song load, on the main thread:**
   - onset detection (chunked with `setTimeout` yields)
@@ -620,13 +687,15 @@ Per loaded song:
 | Buffers posted to the AudioWorklet via `addBuffers` (structured clone, so the worklet holds its own copy) | ≈ 0.35 MB/s |
 | Peaks and onset arrays | small |
 
-- **Per song:** a 5-minute song is roughly 250–300 MB in total while loaded. Up to 3 decoded songs are cached (`buffers` map).
+- **Per song:** a 5-minute song is roughly 250–300 MB in total while loaded.
+- **Cache (fixed, `378bf2c`, `49ac8d4`):** up to 3 decoded songs are cached on desktop, and **1 on phones and tablets (plus the demo)**.
+- **Undo history no longer keeps decoded audio:** it used to pin every imported song in memory for the whole session.
+- **Measured:** renderer growth after three 5-minute imports was about 400 MB on desktop and about 300 MB in phone emulation, down from about 500 MB.
 - **Risk:** long recordings (20–60 minutes) or large WAV files can exceed mobile Safari's per-tab memory limits and crash or reload the page **[Verify on devices]**.
-- **Mitigations:**
-  - transfer, rather than copy, buffers to the worklet
-  - derive the mono or karaoke signal in the worklet
-  - cache only 1 decoded song on phones
-  - stream long files instead of decoding them whole
+- **Remaining mitigations, not done because they need larger changes:**
+  - **Transfer buffers to the worklet:** this would detach the main-thread copy that the waveform, keyboard view, attack detection and fallback engine still use.
+  - **Derive the mono or karaoke signal in the worklet.**
+  - **Stream long files** instead of decoding them whole.
 - **Recordings:** `MediaRecorder` chunks accumulate in memory until stop. They are compressed (256 kbps ≈ 115 MB per hour), so this is OK, but a crash loses the whole recording. Writing chunks to IndexedDB periodically would make it resilient.
 
 ### 8.3 Large libraries
@@ -645,10 +714,10 @@ Per loaded song:
 - **`ScriptProcessorNode` is deprecated** and could be removed by browsers.
 
 ### 8.5 Waveform rendering
-Peaks are pre-computed once (good). Drawing is not tiled or cached; see §8.1. Zoomed-in views re-read the peaks.
+Peaks are pre-computed once. The waveform layer is cached and redrawn only when the view, loop, markers or song change (§8.1).
 
 ### 8.6 Improvements without sacrificing quality
-- Layered or cached canvas rendering.
+- Cache the ruler layer too (the waveform is done).
 - Move the FFT work (keyboard view, onsets, chords later) into a Web Worker.
 - Transfer buffers to the worklet, and drop the duplicate copies.
 - A service worker for offline use and faster repeat loads.
@@ -687,7 +756,7 @@ Peaks are pre-computed once (good). Drawing is not tiled or cached; see §8.1. Z
 ### 9.4 Discoverability
 - **Strong:** the first-visit tip on phones, the Help tab's "Record audio from any website" section, and tooltips.
 - **Weak:**
-  - **The headline feature, tab recording, is an unlabeled monitor icon** in the toolbar. New desktop users may not realize it exists. A labeled "Record a website" button or an empty-library call to action would help.
+  - **Improved (`f121b8d`): the headline feature, tab recording,** now shows a "Record a website" label on desktop screens ≥1400 px wide with a mouse. Below that, and on touch devices, it is still an icon, with a tooltip on desktop. It is hidden on phones and tablets, where browsers can't capture tabs.
   - Keyboard shortcuts are only listed in the Shortcuts tab.
   - The attack-preserving engine and the HQ toggle are invisible, which is fine.
   - The Pro waitlist is in small text in the Library tab.
@@ -697,8 +766,8 @@ Peaks are pre-computed once (good). Drawing is not tiled or cached; see §8.1. Z
 - **Loop keys:** L (start/end), Shift+L (toggle), A/I/O and the [AB] button overlap.
 - **Two sets of navigation buttons:** previous/next marker and start/last marker, with similar icons.
 - **Time boxes:** the yellow, pink and purple boxes mean position, loop start and loop end; their meaning isn't labeled.
-- **"Example" demo song:** pinned and not deletable, and **changes made to it (new loops, markers, settings) are never saved**: `saveSoon()` skips `source === 'example'` [Code]. Users who practice on the demo lose their edits on reload.
-- **Storage warnings:** "Safari deletes this after 7 days…" could alarm users without context.
+- **"Example" demo song:** pinned and not deletable. **Fixed:** changes made to it are now saved between visits (`378bf2c`). There is no "reset demo" button yet.
+- **Storage warnings:** reworded to "Safari may delete this if you don't open the app for 7 days", with practical advice (Home Screen, backup) and the last backup date.
 
 ### 9.6 Similarity to desktop transcription software
 The overall arrangement closely follows Transcribe!: toolbar, marker flags strip, stereo waveform, keyboard strip, round transport buttons and grey "studio" styling. This was deliberate [Owner], and a user publicly noticed the resemblance. Trade-dress considerations are in §2.6.
@@ -760,17 +829,18 @@ This context was supplied by the developer during development; it is not verifia
 - `deploy/THIRD-PARTY-NOTICES.txt`, `deploy/_headers`, `netlify.toml`, `deploy/manifest.webmanifest`, `deploy/robots.txt`, `deploy/sitemap.xml`
 - `deploy/terms/`, `deploy/privacy/` and the guide pages under `deploy/*/`
 - `SlowDownBuddy/` (Swift sources, `project.yml`), `.github/workflows/slowdownbuddy-build.yml`
-- `branding/`, `CLAUDE.md`, `.gitignore`, and the stray root files listed in §2.4
+- `branding/`, `CLAUDE.md`, `.gitignore`, and the stray root files listed in §2.4 (now removed)
+- Added on Oct 30: `deploy/licenses/` (license texts, source packages, page), `deploy/vendor/goatcounter-count.js`
 
-## Appendix B: Quick-win checklist (no code was changed for this report)
+## Appendix B: Checklist status (updated October 30, 2026)
 
-1. Complete `THIRD-PARTY-NOTICES.txt` with the full BSD-3-Clause and Apache-2.0 texts, the libFLAC/libopus versions and the source URLs/hashes of the vendored files.
-2. Remove the stray wheels, `SlowDown.zip` and screenshots from the repository, and from history if it is public.
-3. Self-host or SRI-pin GoatCounter's script, and add a Content-Security-Policy.
-4. Reword the user-facing "Claude preview" error message.
-5. Allow-list fields when restoring backups.
-6. Add a labeled "Record a website" call to action on desktop.
-7. Layered canvas rendering, and move FFT work to a worker.
-8. Reduce memory per loaded song (transfer buffers; single cache on phones).
-9. Consider a service worker for offline use.
-10. Have counsel review the Terms, Privacy, recording-feature marketing and trade dress before launching Pro.
+1. **Done:** complete notices and license texts, source URLs and hashes. The exact libFLAC/libopus versions aren't stated upstream.
+2. **Done for the current tree:** stray files removed. **Owner decision needed:** rewrite the public repository's history to purge them.
+3. **Done:** GoatCounter script self-hosted and pinned; Content-Security-Policy added.
+4. **Done:** "Claude preview" message reworded.
+5. **Done:** restores rebuilt from allow-listed, validated fields; ZIP reader bounds-checked.
+6. **Done:** "Record a website" label on wide desktop screens.
+7. **Partly done:** waveform layer cached. The ruler cache and moving FFT work to a Web Worker remain.
+8. **Partly done:** 1-song cache on phones; undo no longer keeps decoded audio. Transferring buffers to the worklet remains (larger change).
+9. **Open:** service worker for offline use.
+10. **Open (owner/counsel):** review the Terms, Privacy, LGPL compliance for `codec-parser`, recording-feature marketing and trade dress before launching Pro.
