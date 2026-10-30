@@ -1313,6 +1313,17 @@ const CAN_CAPTURE_TAB = !!(navigator.mediaDevices && navigator.mediaDevices.getD
 const TAB_AUDIO_OK = CAN_CAPTURE_TAB && /Chrome\/|Chromium\/|Edg\//.test(navigator.userAgent) && !/Firefox\//.test(navigator.userAgent);
 const LOOP_TIP_KEY = 'slowdown.loopTip';
 
+// iPhone/iPad: the 'playback' session that keeps songs audible with the silent switch on also refuses the microphone
+// ("AudioSession category is not compatible with audio capture"), so switch to play-and-record while recording.
+let micSession = false;
+function setAudioSession(type) {
+  try { if (navigator.audioSession && navigator.audioSession.type !== type) navigator.audioSession.type = type; } catch (e) { /* not supported */ }
+}
+function micSessionOn(on) {
+  micSession = on;
+  setAudioSession(on ? 'play-and-record' : 'playback');
+}
+
 // ---------------------------------------------------------------- audio engine
 // Playback normally runs through Signalsmith Stretch (see enableHQ below), a high-quality phase-vocoder
 // stretcher running in an AudioWorklet. The WSOLA code here is the fallback for browsers without AudioWorklet.
@@ -1341,7 +1352,7 @@ class Engine {
   context() {
     if (this.ctx) return this.ctx;
     // iPhone/iPad: play like a music app, so the silent switch doesn't mute playback (Safari 16.4+).
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
+    if (!micSession) setAudioSession('playback');
     const AC = window.AudioContext || window.webkitAudioContext;
     const ctx = new AC();
     this.ctx = ctx;
@@ -3057,9 +3068,11 @@ async function startCapture(kind) {
         return;
       }
     } else {
+      micSessionOn(true);
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     }
   } catch (e) {
+    if (micSession) micSessionOn(false);
     if (e && e.name === 'NotAllowedError') toast('Recording was blocked. Allow it when the browser asks, or check this site’s microphone and screen-sharing permissions in your browser settings.', 9000);
     else toast('Recording couldn’t start: ' + (e && e.message ? e.message : 'unknown error'), 7000);
     return;
@@ -3114,6 +3127,7 @@ async function finishCapture() {
   $('#rec').hidden = true;
   const chunks = rec.chunks, kind = rec.kind, cancelled = rec.cancelled, type = rec.recorder.mimeType || 'audio/webm';
   rec.recorder = null; rec.stream = null; rec.analyser = null;
+  if (micSession) micSessionOn(false);
   if (cancelled) { toast('Recording discarded.'); return; }
   if (!chunks.length) { toast('Nothing was recorded.'); return; }
   requestPersistence();
