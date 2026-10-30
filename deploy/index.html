@@ -279,6 +279,7 @@
   .rec { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: #f4f4f4; border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(0,0,0,0.15);
     padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px));
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .rec-mic-tip { flex: 1 0 100%; margin: 0; font-size: 13px; color: #6b3a00; background: #fff3dc; border: 1px solid #f0c98a; border-radius: 6px; padding: 6px 8px; }
   .rec-note { flex: 1 0 100%; margin: 0; font-size: 12px; color: var(--muted); }
   .rec-inner { max-width: 900px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
   .rec .live { width: 12px; height: 12px; border-radius: 50%; background: var(--playhead); animation: pulse 1.2s infinite; }
@@ -646,7 +647,7 @@
       <div class="about">
         <h4>Record audio from any website</h4>
         <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome, Edge or Brave (or another Chrome-based browser), press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud on another device or a speaker, or your own instrument, on any device.</p>
-        <p class="hint"><strong>On a phone or tablet</strong>, use its screen recorder, then open the video here: Slow Down Buddy keeps just the audio. iPhone and iPad: add Screen Recording in Settings → Control Center, swipe down to Control Center, tap the record button, play the song, then stop from the red indicator at the top; the video is saved in Photos. Android: pull down Quick Settings, tap Screen record and choose to record media or device audio. Then tap the folder button and pick the video (on iPhone, choose Photo Library). YouTube and most websites work; Spotify and Apple Music record silence on phones. The microphone button can’t record a song playing on the same phone or tablet, only sound from another device or an instrument.</p>
+        <p class="hint"><strong>On a phone or tablet, use screen recording, not the microphone</strong>: record the screen, then open the video here: Slow Down Buddy keeps just the audio. iPhone and iPad: add Screen Recording in Settings → Control Center, swipe down to Control Center, tap the record button, play the song, then stop from the red indicator at the top; the video is saved in Photos. Android: pull down Quick Settings, tap Screen record and choose to record media or device audio. Then tap the folder button and pick the video (on iPhone, choose Photo Library). YouTube and most websites work; Spotify and Apple Music record silence on phones. The microphone button can’t record a song playing on the same phone or tablet, only sound from another device or an instrument.</p>
       </div>
       <div class="soundcheck">
         <h4>Sound check</h4>
@@ -677,6 +678,7 @@
     <div class="meter"><i id="recMeter"></i></div>
     <button class="btn" id="recCancel" type="button">Cancel</button>
     <button class="btn primary" id="recStop" type="button">Stop and add to library</button>
+    <p class="rec-mic-tip" id="recMicTip" hidden><strong>Recording a song playing on this phone or tablet?</strong> The microphone can’t hear it. Cancel, and use Screen Recording in Control Center instead, then open the video with the folder button.</p>
     <p class="rec-note" id="recNote">Only record audio you have the right to use. Recordings are for your personal practice and stay on this device. <a href="/terms/" target="_blank" rel="noopener">Terms</a></p>
   </div>
 </div>
@@ -3190,6 +3192,7 @@ async function startCapture(kind) {
   let seenNote = false;
   try { seenNote = !!localStorage.getItem('slowdown.recNote'); localStorage.setItem('slowdown.recNote', '1'); } catch (e) { /* private mode: show it */ }
   $('#recNote').hidden = seenNote;
+  $('#recMicTip').hidden = !(kind === 'mic' && IS_PHONE);
   $('#rec').hidden = false;
   const data = new Float32Array(1024);
   rec.timer = setInterval(() => {
@@ -3211,14 +3214,20 @@ function stopCapture(cancel) {
   rec.stream.getTracks().forEach((t) => t.stop());
 }
 
-function peakLevel(buffer) {
+// Typical level of a recording: the loudness (RMS) its 50 ms slices reach three-quarters of the time. The waveform is drawn scaled to its
+// loudest peak, so a nearly silent recording of room noise still looks full; this catches it, and taps or bumps
+// during the recording don't hide it.
+function typicalLevel(buffer) {
   if (!buffer) return 1;
-  let p = 0;
-  for (let c = 0; c < buffer.numberOfChannels; c++) {
-    const d = buffer.getChannelData(c);
-    for (let i = 0; i < d.length; i += 7) { const v = Math.abs(d[i]); if (v > p) p = v; }
+  const d = buffer.getChannelData(0), win = Math.max(1, Math.round(buffer.sampleRate * 0.05)), levels = [];
+  for (let s = 0; s + win <= d.length; s += win) {
+    let sum = 0;
+    for (let i = s; i < s + win; i += 2) sum += d[i] * d[i];
+    levels.push(Math.sqrt(sum / Math.ceil(win / 2)));
   }
-  return p;
+  if (!levels.length) return 0;
+  levels.sort((a, b) => a - b);
+  return levels[Math.floor(levels.length * 0.75)];
 }
 
 async function finishCapture() {
@@ -3235,7 +3244,7 @@ async function finishCapture() {
   const song = await importBlob(new Blob(chunks, { type }), (kind === 'tab' ? 'Tab capture ' : 'Mic recording ') + stamp, kind);
   if (!song) return;
   trackEvent(kind === 'tab' ? 'recorded-website' : 'recorded-mic');
-  if (peakLevel(buffers.get(song.id)) < 0.01) {
+  if (typicalLevel(buffers.get(song.id)) < 0.004) { // about -48 dB: room noise, not music
     trackEvent('recorded-silent');
     // A phone or tablet can't hear its own speaker through the microphone: iOS pauses or filters out other apps'
     // sound while a page records, so recordings of a song playing on the same device come out silent.
@@ -4102,7 +4111,7 @@ function wire() {
   if (!CAN_CAPTURE_TAB) {
     // Phones and tablets can't capture another tab: hide that button and point to the microphone instead.
     $('#captureTab').hidden = true;
-    $('#libraryHint').textContent = 'Open a file with the folder button. To get a song from a website or app, screen-record it (on iPhone, Screen Recording in Control Center) and open the video here, or play it out loud and record it with the microphone button. Songs, loops and markers are kept in this browser.';
+    $('#libraryHint').textContent = 'Open a file with the folder button. To record a song from a website or app on this device, use Screen Recording (in Control Center on iPhone and iPad) and open the video here; the microphone can’t hear sound playing on the same device. The microphone button is for another device, a speaker or your instrument. Songs, loops and markers are kept in this browser.';
   }
   if (CAN_CAPTURE_TAB && !TAB_AUDIO_OK) {
     $('#captureTab').title = 'Record audio from a website: works in Chrome, Edge or Brave on a computer';
