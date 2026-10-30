@@ -299,6 +299,16 @@
   @media (prefers-reduced-motion: reduce) { .rec .live { animation: none; } }
   .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 30; max-width: min(560px, calc(100% - 32px));
     background: #2b2b2b; color: #f4f4f4; padding: 10px 14px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); font-size: 13px; }
+  /* Safari and Firefox can share a screen but not a tab's audio: the record-a-website button opens this note instead. */
+  .rec-help { position: fixed; z-index: 30; width: min(340px, calc(100% - 20px)); background: #fff; color: #222; border: 1px solid #c9c9c9; border-radius: 10px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.22); font-size: 14px; line-height: 1.4; }
+  .rec-help p { margin: 0 24px 10px 0; }
+  .rec-help .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .rec-help .x { position: absolute; top: 6px; right: 6px; border: 0; background: none; font-size: 18px; line-height: 1; padding: 4px 6px; cursor: pointer; color: #666; }
+  /* Shown on computers until the first loop is made, so people find the L, L shortcut. */
+  .loop-tip { position: absolute; left: 8px; bottom: 8px; z-index: 2; display: flex; align-items: center; gap: 6px; background: rgba(43, 43, 43, 0.82); color: #f4f4f4; font-size: 12.5px; padding: 4px 4px 4px 10px; border-radius: 999px; }
+  .loop-tip kbd { font: 700 11.5px ui-monospace, Menlo, monospace; background: #f4f4f4; color: #222; border-radius: 4px; padding: 0 5px; }
+  .loop-tip button { border: 0; background: none; color: #ddd; font-size: 15px; line-height: 1; padding: 2px 6px; cursor: pointer; border-radius: 999px; }
+  .loop-tip button:hover { background: rgba(255,255,255,0.15); }
   .drop { position: fixed; inset: 0; z-index: 40; background: rgba(253, 217, 139, 0.45); border: 3px dashed var(--wave); display: grid; place-items: center; font-size: 24px; font-weight: 700; color: var(--wave); pointer-events: none; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -487,6 +497,7 @@
     <div class="wave-wrap">
       <canvas id="wave" aria-label="Waveform. Click to move the playhead, drag across to set a loop."></canvas>
       <div class="wave-busy" id="waveBusy" hidden>Reading audio…</div>
+      <div class="loop-tip" id="loopTip" hidden><span>Tip: press <kbd>L</kbd> to start a loop, <kbd>L</kbd> again to end it</span><button type="button" id="loopTipX" title="Hide this tip" aria-label="Hide this tip">×</button></div>
     </div>
     <div class="hscroll">
       <button type="button" id="scrollLeft" aria-label="Scroll left">◀</button>
@@ -686,6 +697,11 @@
   <p><strong>Try it:</strong> tap ▶ to play the demo, then tap <strong>50%</strong> to hear it slowed down without changing pitch. Tap <strong>Loop start</strong> and <strong>Loop end</strong> to loop a passage.</p>
   <p class="hint">On a computer (Chrome, Edge or Brave) you can also record any browser tab, like YouTube or Spotify, straight into your library.</p>
   <button class="btn primary" type="button" id="phoneTipOk">Got it</button>
+</div>
+<div class="rec-help" id="recHelp" role="dialog" aria-label="Recording a website" hidden>
+  <button class="x" type="button" id="recHelpX" aria-label="Close">×</button>
+  <p><strong>Recording a website needs Chrome, Edge or Brave on a computer.</strong> This browser can’t capture a tab’s sound. Here you can open a file, or play the song out loud and record it with the microphone.</p>
+  <div class="row"><label class="btn primary" for="fileInput">Open a file</label><button class="btn" type="button" id="recHelpMic">Record with microphone</button></div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="drop" id="drop" hidden>Drop to open</div>
@@ -1293,6 +1309,9 @@ const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfo
 // Recording another browser tab needs desktop screen sharing; no phone or tablet browser offers it.
 const IS_PHONE = IS_IOS || /Android|Mobile/i.test(navigator.userAgent);
 const CAN_CAPTURE_TAB = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !IS_IOS && !/Android|Mobile/i.test(navigator.userAgent);
+// Only Chromium browsers (Chrome, Edge, Brave, Opera…) share a tab's audio; desktop Safari and Firefox share the picture only.
+const TAB_AUDIO_OK = CAN_CAPTURE_TAB && /Chrome\/|Chromium\/|Edg\//.test(navigator.userAgent) && !/Firefox\//.test(navigator.userAgent);
+const LOOP_TIP_KEY = 'slowdown.loopTip';
 
 // ---------------------------------------------------------------- audio engine
 // Playback normally runs through Signalsmith Stretch (see enableHQ below), a high-quality phase-vocoder
@@ -2365,6 +2384,7 @@ function setLoop(a, b, seek = true) {
   const lo = clamp(Math.min(a, b), 0, engine.duration), hi = clamp(Math.max(a, b), 0, engine.duration);
   if (hi - lo < 0.05) return;
   S().loop = { a: lo, b: hi, on: true };
+  hideLoopTip();
   applyLoop();
   if (seek) engine.seek(lo);
   saveSoon(); renderLoop(); dirtyWave = true;
@@ -3006,6 +3026,23 @@ function pickMime() {
   return types.find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
 }
 
+function showRecHelp() {
+  trackOnce('rec-help');
+  const box = $('#recHelp'), r = $('#captureTab').getBoundingClientRect();
+  box.hidden = false;
+  box.style.top = Math.round(r.bottom + 6) + 'px';
+  box.style.left = Math.round(Math.max(10, Math.min(r.left, innerWidth - box.offsetWidth - 10))) + 'px';
+  $('#recHelpMic').focus();
+}
+function hideRecHelp() { $('#recHelp').hidden = true; }
+
+function hideLoopTip() {
+  const tip = $('#loopTip');
+  if (!tip || tip.hidden) return;
+  tip.hidden = true;
+  try { localStorage.setItem(LOOP_TIP_KEY, '1'); } catch (e) { /* private mode */ }
+}
+
 async function startCapture(kind) {
   if (rec.recorder) return;
   if (!window.MediaRecorder || !navigator.mediaDevices) { toast('This browser can’t record audio. Use Chrome, Edge, Brave or Firefox on a computer.', 7000); return; }
@@ -3472,7 +3509,13 @@ function wire() {
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
   });
   $('#restoreInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreBackup(f); });
-  $('#captureTab').addEventListener('click', () => startCapture('tab'));
+  $('#captureTab').addEventListener('click', () => (TAB_AUDIO_OK ? startCapture('tab') : showRecHelp()));
+  $('#recHelpX').addEventListener('click', hideRecHelp);
+  $('#recHelpMic').addEventListener('click', () => { hideRecHelp(); startCapture('mic'); });
+  $('#recHelp label').addEventListener('click', hideRecHelp);
+  $('#loopTipX').addEventListener('click', hideLoopTip);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#recHelp').hidden) hideRecHelp(); });
+  document.addEventListener('pointerdown', (e) => { if (!$('#recHelp').hidden && !e.target.closest('#recHelp, #captureTab')) hideRecHelp(); });
   $('#captureMic').addEventListener('click', () => startCapture('mic'));
   $('#recStop').addEventListener('click', () => stopCapture(false));
   $('#recCancel').addEventListener('click', () => stopCapture(true));
@@ -3930,6 +3973,13 @@ function wire() {
     $('#captureTab').hidden = true;
     $('#libraryHint').textContent = 'Open a file with the folder button, or play a song out loud and record it with the microphone button. Songs, loops and markers are kept in this browser.';
   }
+  if (CAN_CAPTURE_TAB && !TAB_AUDIO_OK) {
+    $('#captureTab').title = 'Record audio from a website: works in Chrome, Edge or Brave on a computer';
+    $('#libraryHint').textContent = 'Open files with the folder button or drop them anywhere on the page. Recording a website works in Chrome, Edge or Brave on a computer; here you can record with the microphone button. Songs, loops and markers are kept in this browser.';
+  }
+  let loopTipSeen = true;
+  try { loopTipSeen = !!localStorage.getItem(LOOP_TIP_KEY); } catch (e) { /* private mode: skip the tip */ }
+  if (!IS_PHONE && matchMedia('(pointer: fine)').matches && !loopTipSeen) $('#loopTip').hidden = false;
   if (!Store.db) $('#libraryHint').textContent = CAN_CAPTURE_TAB
     ? 'Open files with the folder button or drop them anywhere on the page, or record the audio from any website with the screen button.'
     : 'Open a file with the folder button, or play a song out loud and record it with the microphone button.';
