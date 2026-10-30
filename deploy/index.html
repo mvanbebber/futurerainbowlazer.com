@@ -2724,6 +2724,11 @@ function drawRuler(now) {
   // time numbers
   const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
   const step = steps.find((s) => view.span / s <= W / (95 * dpr)) || 600;
+  const numY = (compact ? 13 : 17) * dpr;
+  // The song's length, always at the right end of the time row; tick labels that would run into it are skipped.
+  g.font = '700 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
+  const lenText = shortClock(engine.duration), lenW = g.measureText(lenText).width;
+  const lenLeft = W - lenW - 9 * dpr;
   g.font = '500 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
   g.textBaseline = 'alphabetic';
   for (let t = Math.ceil(view.start / step) * step; t <= view.start + view.span; t += step) {
@@ -2731,9 +2736,17 @@ function drawRuler(now) {
     const label = step < 1 ? (t % 60).toFixed(2) : shortClock(t);
     g.fillStyle = '#8a8a8a';
     g.fillRect(tx, 3 * dpr, dpr, (compact ? 12 : 15) * dpr);
+    if (tx + 4 * dpr + g.measureText(label).width > lenLeft - 8 * dpr) continue;
     g.fillStyle = '#666';
-    g.fillText(label, tx + 4 * dpr, (compact ? 13 : 17) * dpr);
+    g.fillText(label, tx + 4 * dpr, numY);
   }
+  g.font = '700 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
+  const fs = (compact ? 11 : 13) * dpr;
+  g.fillStyle = '#e4e4e4';
+  const bx = lenLeft - 5 * dpr, by = numY - fs, bw = lenW + 10 * dpr, bh = fs + 4 * dpr;
+  if (g.roundRect) { g.beginPath(); g.roundRect(bx, by, bw, bh, 4 * dpr); g.fill(); } else g.fillRect(bx, by, bw, bh); // older Safari
+  g.fillStyle = '#333';
+  g.fillText(lenText, lenLeft, numY);
 
   // markers on top
   for (const f of flags) {
