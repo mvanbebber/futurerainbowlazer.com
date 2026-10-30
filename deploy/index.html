@@ -129,6 +129,10 @@
   .cgroup { display: grid; gap: 8px; align-content: center; min-width: 0; }
   .srow { display: flex; align-items: center; gap: 6px; }
   .srow svg { width: 20px; height: 20px; flex: none; color: #555; }
+  /* − turtle and runner + at the ends of the speed slider: each steps the speed by 5%. */
+  .speed-step { display: inline-flex; align-items: center; gap: 1px; flex: none; border: 0; background: none; padding: 2px 3px; border-radius: 6px; cursor: pointer; color: #555; font: 700 17px/1 system-ui, sans-serif; }
+  .speed-step:hover { background: rgba(0, 0, 0, 0.07); }
+  .speed-step:active { background: rgba(0, 0, 0, 0.14); }
   .srow .glyph { width: 20px; text-align: center; font-size: 18px; color: #444; flex: none; }
   input[type=range] { accent-color: #6d6d6d; min-width: 0; }
   .srow input[type=range] { width: clamp(100px, 10vw, 170px); max-width: 40vw; }
@@ -521,7 +525,7 @@
       </div>
       <div class="cgroup c-speed">
         <div class="sp-box"><output class="pill white small editable" id="speedOut" title="Speed. Double-click to type a percentage.">100%</output></div>
-        <div class="srow"><svg aria-hidden="true"><title>Slower</title><use href="#i-turtle"/></svg><input type="range" id="speed" min="-100" max="100" step="1" value="0" list="speedTicks" aria-label="Speed"><datalist id="speedTicks"><option value="0"></option></datalist><svg aria-hidden="true"><title>Faster</title><use href="#i-runner"/></svg></div>
+        <div class="srow"><button class="speed-step" type="button" id="speedDown" title="Slower: −5% (Shift+↓)" aria-label="Slower, 5 percent"><span aria-hidden="true">−</span><svg aria-hidden="true"><use href="#i-turtle"/></svg></button><input type="range" id="speed" min="-100" max="100" step="1" value="0" list="speedTicks" aria-label="Speed"><datalist id="speedTicks"><option value="0"></option></datalist><button class="speed-step" type="button" id="speedUp" title="Faster: +5% (Shift+↑)" aria-label="Faster, 5 percent"><svg aria-hidden="true"><use href="#i-runner"/></svg><span aria-hidden="true">+</span></button></div>
       </div>
       <div class="cgroup pitch">
         <div class="prow">
@@ -3474,6 +3478,8 @@ function wire() {
   $('#recCancel').addEventListener('click', () => stopCapture(true));
   $('#tbAB').addEventListener('click', () => loopStep('Click the [AB] button'));
   $('#phLoop').addEventListener('click', () => loopStep('Tap Loop end'));
+  $('#speedDown').addEventListener('click', () => setSpeed(S().speed - 0.05));
+  $('#speedUp').addEventListener('click', () => setSpeed(S().speed + 0.05));
   $('#phMarker').addEventListener('click', () => { addMarker('measure'); toast('Marker added at ' + clock(engine.currentTime()), 1200); });
   // First visit on a phone: a short how-to (shown once).
   try {
