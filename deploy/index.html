@@ -1282,6 +1282,7 @@ const Store = {
 // iPhone, iPad (iPadOS reports itself as a Mac with touch) and iPod.
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 // Recording another browser tab needs desktop screen sharing; no phone or tablet browser offers it.
+const IS_PHONE = IS_IOS || /Android|Mobile/i.test(navigator.userAgent);
 const CAN_CAPTURE_TAB = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !IS_IOS && !/Android|Mobile/i.test(navigator.userAgent);
 
 // ---------------------------------------------------------------- audio engine
@@ -1938,9 +1939,29 @@ let saveTimer = 0;
 let dirtyWave = true;
 
 const S = () => current.settings;
+// Saves a song's metadata. The demo isn't in the database (it's rebuilt from demo.mp3 on every visit), so its
+// loops, markers and settings are kept in a small localStorage record and laid back over it on the next visit.
+const DEMO_KEY = 'slowdown.demo';
+function persistSong(song) {
+  if (!song) return;
+  if (song.source === 'example') {
+    try { localStorage.setItem(DEMO_KEY, JSON.stringify({ v: 1, settings: song.settings, markers: song.markers, loops: song.loops })); } catch (e) { /* storage off or full */ }
+    return;
+  }
+  return Store.putSong(song);
+}
+function applyDemoEdits(song) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DEMO_KEY) || 'null');
+    if (!saved || saved.v !== 1) return;
+    song.settings = cleanSettings(saved.settings);
+    song.markers = cleanMarkers(saved.markers);
+    song.loops = cleanLoops(saved.loops);
+  } catch (e) { /* unreadable: keep the built-in demo */ }
+}
 function saveSoon() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { if (current && current.source !== 'example') Store.putSong(current); }, 500);
+  saveTimer = setTimeout(() => persistSong(current), 500);
   noteEdit();
 }
 
@@ -1991,7 +2012,7 @@ async function applySnapshot(id, json) {
   applyLoop();
   undoHistory.base = json; undoHistory.baseId = id;
   clearTimeout(saveTimer);
-  if (current.source !== 'example') Store.putSong(current);
+  persistSong(current);
   renderAll();
   lastNotesAt = -1;
 }
@@ -2012,7 +2033,7 @@ async function removeSong(id, record = true) {
 }
 async function bringBackSong(entry) {
   if (entry.blob) await Store.putAudio(entry.song.id, entry.blob);
-  if (entry.song.source !== 'example') await Store.putSong(entry.song);
+  await persistSong(entry.song);
   if (entry.buffer) buffers.set(entry.song.id, entry.buffer);
   songs.splice(clamp(entry.index || 1, 1, songs.length), 0, entry.song);
   await selectSong(entry.song.id);
@@ -2298,7 +2319,9 @@ async function selectSong(id) {
     $('#waveBusy').hidden = true;
   }
   // Keep only a few decoded songs in memory.
-  for (const key of buffers.keys()) if (buffers.size > 3 && key !== id && key !== 'example') buffers.delete(key);
+  // Decoded audio is large (about 21 MB per stereo minute); phones keep only the open song and the demo.
+  const keep = IS_PHONE ? 1 : 3;
+  for (const key of buffers.keys()) if (buffers.size > keep && key !== id && key !== 'example') buffers.delete(key);
   current = song;
   abNext = 'a';
   syncPhoneLoop();
@@ -2976,7 +2999,7 @@ async function startCapture(kind) {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     }
   } catch (e) {
-    if (e && e.name === 'NotAllowedError') toast('Recording was blocked. Allow it when the browser asks. Inside the Claude preview, recording is switched off; open Slow Down Buddy from your own site to record.', 9000);
+    if (e && e.name === 'NotAllowedError') toast('Recording was blocked. Allow it when the browser asks, or check this site’s microphone and screen-sharing permissions in your browser settings.', 9000);
     else toast('Recording couldn’t start: ' + (e && e.message ? e.message : 'unknown error'), 7000);
     return;
   }
@@ -3066,11 +3089,16 @@ async function updateStorage() {
   let line = count + (count === 1 ? ' song' : ' songs');
   if (used != null) line += ' · ' + fmtBytes(used) + (quota ? ' of ' + fmtBytes(quota) : '') + ' used';
   let status;
-  if (persisted) status = '<strong>Kept permanently</strong> in this browser.';
-  else if (isSafari) status = '<strong>Safari deletes this after 7 days without a visit.</strong> Back up to keep your songs.';
+  if (persisted) status = '<strong>Saved in this browser</strong> and protected from automatic clean-up.';
+  else if (IS_IOS) status = '<strong>Safari may delete this if you don’t open the app for 7 days.</strong> Add Slow Down Buddy to your Home Screen, and back up.';
+  else if (isSafari) status = '<strong>Safari may delete this if you don’t open the app for 7 days.</strong> Back up to keep your songs.';
   else status = '<strong>May be cleared</strong> if the disk runs low. Back up to be safe.';
-  el.className = 'storage-line' + (persisted ? '' : ' warn');
-  el.innerHTML = line + '<br>' + status;
+  // Clearing history or site data always removes it, persistent or not.
+  status += ' Clearing this browser’s history or site data deletes your library too.';
+  const last = lastBackupAt(), newer = songs.filter((s) => s.source !== 'example' && s.addedAt > last).length;
+  const backupLine = count ? (last ? 'Last backup: ' + new Date(last).toLocaleDateString() + (newer ? ' · ' + newer + (newer === 1 ? ' song' : ' songs') + ' added since' : '') : 'Not backed up yet.') : '';
+  el.className = 'storage-line' + (persisted && !newer ? '' : ' warn');
+  el.innerHTML = line + '<br>' + status + (backupLine ? '<br>' + backupLine : '');
 }
 
 // Minimal ZIP (stored, no compression) so a backup opens anywhere and audio isn't re-encoded.
@@ -3128,25 +3156,34 @@ async function readZip(file) {
   for (let i = tail.byteLength - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
   if (eocd < 0) throw new Error('This file isn’t a ZIP backup.');
   const count = tail.getUint16(eocd + 10, true), cdSize = tail.getUint32(eocd + 12, true), cdOff = tail.getUint32(eocd + 16, true);
+  const damaged = 'This backup file is damaged or isn’t a Slow Down Buddy backup.';
+  if (cdOff + cdSize > file.size || cdSize > 64e6) throw new Error(damaged);
   const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer());
   const dec = new TextDecoder(), entries = new Map();
   let p = 0;
   for (let i = 0; i < count && p + 46 <= cd.byteLength; i++) {
     if (cd.getUint32(p, true) !== 0x02014b50) break;
     const nlen = cd.getUint16(p + 28, true), xlen = cd.getUint16(p + 30, true), clen = cd.getUint16(p + 32, true);
-    entries.set(dec.decode(new Uint8Array(cd.buffer, p + 46, nlen)), {
-      method: cd.getUint16(p + 10, true), size: cd.getUint32(p + 20, true), local: cd.getUint32(p + 42, true),
-    });
+    if (p + 46 + nlen > cd.byteLength) throw new Error(damaged);
+    const entry = { method: cd.getUint16(p + 10, true), size: cd.getUint32(p + 20, true), full: cd.getUint32(p + 24, true), local: cd.getUint32(p + 42, true) };
+    if (entry.local + 30 > file.size) throw new Error(damaged);
+    entries.set(dec.decode(new Uint8Array(cd.buffer, p + 46, nlen)), entry);
     p += 46 + nlen + xlen + clen;
   }
   async function get(name) {
     const e = entries.get(name);
     if (!e) return null;
     const lh = new DataView(await file.slice(e.local, e.local + 30).arrayBuffer());
+    if (lh.getUint32(0, true) !== 0x04034b50) throw new Error(damaged);
     const start = e.local + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+    if (start + e.size > file.size) throw new Error(damaged);
     const raw = file.slice(start, start + e.size);
     if (e.method === 0) return raw;
-    if (e.method === 8 && window.DecompressionStream) return new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+    if (e.method === 8 && window.DecompressionStream) {
+      const out = await new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+      if (out.size !== e.full) throw new Error(damaged);
+      return out;
+    }
     throw new Error('This backup was re-compressed in a way this browser can’t read. Use the original backup file.');
   }
   return { get };
@@ -3162,6 +3199,7 @@ async function saveFile(filename, blob) {
   if (downloads) {
     try {
       await downloads.save({ filename, data: blob });
+      noteBackup();
       toast('Backup saved: ' + filename);
     } catch (e) {
       toast(e && e.code === 'declined' ? 'Backup not saved.' : 'The backup couldn’t be saved here. Open Slow Down Buddy from your own site to back up.', 7000);
@@ -3174,8 +3212,14 @@ async function saveFile(filename, blob) {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   trackEvent('backup');
+  noteBackup();
   toast('Backup downloaded: ' + filename + ' (' + fmtBytes(blob.size) + '). Keep it somewhere safe, like iCloud Drive or Dropbox.', 7000);
 }
+
+// When the library was last backed up, to remind people gently when newer songs aren't in a backup yet.
+const BACKUP_KEY = 'slowdown.lastBackup';
+function lastBackupAt() { try { return Number(localStorage.getItem(BACKUP_KEY)) || 0; } catch (e) { return 0; } }
+function noteBackup() { try { localStorage.setItem(BACKUP_KEY, String(Date.now())); } catch (e) { /* storage off */ } updateStorage(); }
 
 async function backupLibrary() {
   const list = songs.filter((s) => s.source !== 'example');
@@ -3204,6 +3248,73 @@ async function backupLibrary() {
   }
 }
 
+// ---------------------------------------------------------------- validating saved and restored data
+// Backups are files from outside the app, so every field is checked and copied into a fresh object rather than
+// merged: unknown keys (including __proto__) are dropped, numbers are clamped, strings are capped.
+const finite = (v, lo, hi, def) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def);
+const shortText = (v, max, def = '') => (typeof v === 'string' ? v.slice(0, max) : def);
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const CHANNEL_MODES = ['stereo', 'mono', 'left', 'right', 'karaoke'];
+const MARKER_KINDS = ['section', 'measure', 'beat'];
+const HOURS = 24 * 3600;
+function cleanSettings(raw) {
+  const d = defaultSettings(), r = raw && typeof raw === 'object' ? raw : {};
+  const loop = r.loop && typeof r.loop === 'object' ? r.loop : {};
+  const eq = Array.isArray(r.eq) ? r.eq : [];
+  return {
+    speed: finite(r.speed, 0.25, 2, d.speed),
+    semis: Math.round(finite(r.semis, -24, 24, d.semis)),
+    cents: Math.round(finite(r.cents, -50, 50, d.cents)),
+    volume: finite(r.volume, 0, 1, d.volume),
+    mode: CHANNEL_MODES.includes(r.mode) ? r.mode : d.mode,
+    eq: d.eq.map((g, i) => finite(eq[i], -40, 40, g)),
+    pos: finite(r.pos, 0, HOURS, 0),
+    loop: { a: finite(loop.a, 0, HOURS, null), b: finite(loop.b, 0, HOURS, null), on: loop.on === true },
+  };
+}
+function cleanMarkers(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const m of raw.slice(0, 20000)) {
+    if (!m || typeof m !== 'object') continue;
+    const t = finite(m.t, 0, HOURS, null);
+    if (t == null) continue;
+    out.push({ id: SAFE_ID.test(m.id) ? m.id : uid(), t, kind: MARKER_KINDS.includes(m.kind) ? m.kind : 'measure', label: shortText(m.label, 200) });
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+function cleanLoops(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const l of raw.slice(0, 5000)) {
+    if (!l || typeof l !== 'object') continue;
+    const a = finite(l.a, 0, HOURS, null), b = finite(l.b, 0, HOURS, null);
+    if (a == null || b == null || b <= a) continue;
+    out.push({ id: SAFE_ID.test(l.id) ? l.id : uid(), name: shortText(l.name, 200, 'Loop'), a, b });
+  }
+  return out;
+}
+// One song record from a backup's manifest, or null if it isn't usable.
+function cleanBackupSong(rec) {
+  if (!rec || typeof rec !== 'object' || !SAFE_ID.test(rec.id) || rec.id === 'example') return null;
+  const audioFile = typeof rec.audioFile === 'string' && /^audio\/[A-Za-z0-9_-]{1,64}\.[a-z0-9]{1,8}$/.test(rec.audioFile) ? rec.audioFile : null;
+  if (!audioFile) return null;
+  const audioType = typeof rec.audioType === 'string' && /^(audio|video)\/[a-z0-9.+-]{1,40}(;[ -~]{0,80})?$/i.test(rec.audioType) ? rec.audioType : '';
+  return {
+    audioFile, audioType,
+    song: {
+      id: rec.id,
+      title: shortText(rec.title, 300).trim() || 'Untitled',
+      source: ['file', 'tab', 'mic'].includes(rec.source) ? rec.source : 'file',
+      addedAt: finite(rec.addedAt, 0, 8.64e15, Date.now()),
+      duration: finite(rec.duration, 0, HOURS, 0),
+      settings: cleanSettings(rec.settings),
+      markers: cleanMarkers(rec.markers),
+      loops: cleanLoops(rec.loops),
+    },
+  };
+}
+
 async function audioReadable(id) {
   try { const b = await Store.getAudio(id); return !!b && (await b.slice(0, 16).arrayBuffer()).byteLength > 0; } catch (e) { return false; }
 }
@@ -3215,23 +3326,21 @@ async function restoreBackup(file) {
   try {
     const zip = await readZip(file);
     const manifestBlob = await zip.get('manifest.json');
-    if (!manifestBlob) throw new Error('This file isn’t a Slow Down Buddy backup.');
-    const manifest = JSON.parse(await manifestBlob.text());
+    const notBackup = 'This file isn’t a Slow Down Buddy backup.';
+    if (!manifestBlob || manifestBlob.size > 50e6) throw new Error(notBackup);
+    let manifest;
+    try { manifest = JSON.parse(await manifestBlob.text()); } catch (e) { throw new Error(notBackup); }
     // Backups made before the rename say 'SlowDown'.
-    if (!['SlowDownBuddy', 'SlowDown'].includes(manifest.app) || !Array.isArray(manifest.songs)) throw new Error('This file isn’t a Slow Down Buddy backup.');
-    let added = 0, updated = 0, failed = 0, currentChanged = false;
-    for (const rec of manifest.songs) {
-      const { audioFile, audioType, ...song } = rec;
-      if (!song || typeof song.id !== 'string' || song.id === 'example') continue;
-      song.title = String(song.title || 'Untitled');
-      song.settings = Object.assign(defaultSettings(), song.settings || {});
-      song.settings.loop = Object.assign({ a: null, b: null, on: false }, song.settings.loop || {});
-      song.markers = Array.isArray(song.markers) ? song.markers : [];
-      song.loops = Array.isArray(song.loops) ? song.loops : [];
+    if (!manifest || typeof manifest !== 'object' || !['SlowDownBuddy', 'SlowDown'].includes(manifest.app) || !Array.isArray(manifest.songs)) throw new Error(notBackup);
+    let added = 0, updated = 0, failed = 0, skipped = 0, currentChanged = false;
+    for (const rec of manifest.songs.slice(0, 10000)) {
+      const clean = cleanBackupSong(rec);
+      if (!clean) { skipped++; continue; }
+      const { audioFile, audioType, song } = clean;
       const existing = songs.find((s) => s.id === song.id);
       if (existing) {
         // Same song already here: take the backup's markers, loops and settings, and its audio too if ours is gone.
-        Object.assign(existing, { title: song.title, settings: song.settings, markers: song.markers, loops: song.loops });
+        existing.title = song.title; existing.settings = song.settings; existing.markers = song.markers; existing.loops = song.loops;
         if (existing.audioLost || !(await audioReadable(existing.id))) {
           const raw = await zip.get(audioFile);
           if (raw) {
@@ -3262,6 +3371,7 @@ async function restoreBackup(file) {
     if (added) bits.push(added + (added === 1 ? ' song added' : ' songs added'));
     if (updated) bits.push(updated + ' updated');
     if (failed) bits.push(failed + ' couldn’t be saved (out of space?)');
+    if (skipped) bits.push(skipped + ' skipped (damaged entries)');
     toast('Backup restored: ' + (bits.join(', ') || 'nothing new') + '.', 6000);
   } catch (e) {
     toast('Couldn’t restore: ' + (e && e.message ? e.message : 'unknown error'), 8000);
@@ -3784,6 +3894,7 @@ function wire() {
   }
   updateSoundCheck();
   const [example] = await Promise.all([loadExample(ctx.sampleRate), Store.open()]);
+  applyDemoEdits(example.song);
   buffers.set('example', example.buffer);
   const stored = (await Store.songs()) || [];
   stored.sort((a, b) => b.addedAt - a.addedAt);
