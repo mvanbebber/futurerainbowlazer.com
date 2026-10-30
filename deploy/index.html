@@ -2022,11 +2022,12 @@ async function removeSong(id, record = true) {
   if (index < 1) return;
   const song = songs[index];
   if (current && current.id === id) flushEdit();
-  const blob = await Store.getAudio(id), buffer = buffers.get(id);
+  const blob = await Store.getAudio(id);
   await Store.deleteSong(id);
   songs.splice(index, 1);
   buffers.delete(id);
-  if (record) pushHistory({ kind: 'delete', song, blob, buffer, index });
+  // Undo keeps the compressed file, not the decoded audio (tens of MB per song); bringing it back decodes it again.
+  if (record) pushHistory({ kind: 'delete', song, blob, index });
   if (current && current.id === id) await selectSong(songs[0].id);
   else renderLibrary();
   updateStorage();
@@ -2260,7 +2261,7 @@ async function importBlob(original, title, source) {
     await Store.putSong(song);
     if (Store.db && stored == null) toast('“' + title + '” plays now but couldn’t be saved: this browser is out of storage space for the site. Remove some songs or back up and clear.', 8000);
     await selectSong(song.id);
-    pushHistory({ kind: 'add', song, blob, buffer, index: 1 });
+    pushHistory({ kind: 'add', song, blob, index: 1 });
     updateStorage();
     return song;
   } catch (e) {
