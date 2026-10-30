@@ -645,8 +645,8 @@
       </div>
       <div class="about">
         <h4>Record audio from any website</h4>
-        <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome, Edge or Brave (or another Chrome-based browser), press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud, on any device.</p>
-        <p class="hint"><strong>On a phone or tablet</strong>, use its screen recorder, then open the video here: Slow Down Buddy keeps just the audio. iPhone and iPad: add Screen Recording in Settings → Control Center, swipe down to Control Center, tap the record button, play the song, then stop from the red indicator at the top; the video is saved in Photos. Android: pull down Quick Settings, tap Screen record and choose to record media or device audio. Then tap the folder button and pick the video (on iPhone, choose Photo Library). YouTube and most websites work; Spotify and Apple Music record silence on phones.</p>
+        <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome, Edge or Brave (or another Chrome-based browser), press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud on another device or a speaker, or your own instrument, on any device.</p>
+        <p class="hint"><strong>On a phone or tablet</strong>, use its screen recorder, then open the video here: Slow Down Buddy keeps just the audio. iPhone and iPad: add Screen Recording in Settings → Control Center, swipe down to Control Center, tap the record button, play the song, then stop from the red indicator at the top; the video is saved in Photos. Android: pull down Quick Settings, tap Screen record and choose to record media or device audio. Then tap the folder button and pick the video (on iPhone, choose Photo Library). YouTube and most websites work; Spotify and Apple Music record silence on phones. The microphone button can’t record a song playing on the same phone or tablet, only sound from another device or an instrument.</p>
       </div>
       <div class="soundcheck">
         <h4>Sound check</h4>
@@ -3211,6 +3211,16 @@ function stopCapture(cancel) {
   rec.stream.getTracks().forEach((t) => t.stop());
 }
 
+function peakLevel(buffer) {
+  if (!buffer) return 1;
+  let p = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i += 7) { const v = Math.abs(d[i]); if (v > p) p = v; }
+  }
+  return p;
+}
+
 async function finishCapture() {
   clearInterval(rec.timer);
   $('#rec').hidden = true;
@@ -3223,7 +3233,18 @@ async function finishCapture() {
   const d = new Date(), pad = (n) => String(n).padStart(2, '0');
   const stamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + '.' + pad(d.getMinutes());
   const song = await importBlob(new Blob(chunks, { type }), (kind === 'tab' ? 'Tab capture ' : 'Mic recording ') + stamp, kind);
-  if (song) { toast('Added “' + song.title + '”. Rename it above.'); trackEvent(kind === 'tab' ? 'recorded-website' : 'recorded-mic'); }
+  if (!song) return;
+  trackEvent(kind === 'tab' ? 'recorded-website' : 'recorded-mic');
+  if (peakLevel(buffers.get(song.id)) < 0.01) {
+    trackEvent('recorded-silent');
+    // A phone or tablet can't hear its own speaker through the microphone: iOS pauses or filters out other apps'
+    // sound while a page records, so recordings of a song playing on the same device come out silent.
+    toast(kind === 'tab' ? 'Added “' + song.title + '”, but it’s silent. Some sites block recording; try another tab, or switch on “Share tab audio”.'
+      : IS_PHONE ? 'Added “' + song.title + '”, but it’s almost silent. The microphone can’t record a song playing on this same phone or tablet: use Screen Recording in Control Center instead, then open the video with the folder button. The microphone is for sound from another device or an instrument.'
+      : 'Added “' + song.title + '”, but it’s almost silent. Check that the right microphone is selected and allowed for this site.', 14000);
+    return;
+  }
+  toast('Added “' + song.title + '”. Rename it above.');
 }
 
 // ---------------------------------------------------------------- storage status, persistence, backup
