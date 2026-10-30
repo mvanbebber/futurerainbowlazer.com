@@ -75,6 +75,8 @@
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; background: var(--window); color: var(--ink); }
+  /* No double-tap-to-zoom on phones and tablets: quick repeated taps on buttons (rewind, +Marker, speed) stay taps. Pinch zoom still works. */
+  html { touch-action: manipulation; }
   body { overflow: hidden; }
   body { font-family: var(--ui); font-size: 13px; line-height: 1.4; }
   button, input, select, label.tb { font: inherit; color: inherit; }
