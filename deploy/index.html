@@ -103,6 +103,12 @@
   .tb.sp { min-width: 46px; font-size: 14px; }
   a.tb { text-decoration: none; }
   .tb.support { grid-auto-flow: column; gap: 5px; padding: 0 10px; font-weight: 600; }
+  /* The website-recording button gets a text label on wide screens with a mouse; elsewhere it stays an icon. */
+  .tb .tb-label { display: none; }
+  @media (min-width: 1400px) and (pointer: fine) {
+    #captureTab { grid-auto-flow: column; gap: 6px; padding: 0 10px; }
+    #captureTab .tb-label { display: inline; font-weight: 600; white-space: nowrap; }
+  }
   .tb.support svg { width: 18px; height: 18px; }
 
   .ruler { display: block; width: 100%; height: 50px; background: linear-gradient(#fbfbfb, #dedede); border-bottom: 1px solid var(--line-soft); cursor: pointer; }
@@ -438,7 +444,7 @@
         <button class="tb" type="button" data-open="library" title="Library: songs, saved loops and markers, backup" aria-label="Library and loops"><svg><use href="#i-library"/></svg></button>
         <label class="tb" for="fileInput" title="Open an audio or video file" aria-label="Open file"><svg><use href="#i-open"/></svg></label>
         <button class="tb" type="button" id="tbBackup" title="Save a backup of your library (songs, loops, markers)" aria-label="Back up library"><svg><use href="#i-save"/></svg></button>
-        <button class="tb" type="button" id="captureTab" title="Record audio from any website: pick a browser tab and it’s saved to your library" aria-label="Record audio from a website"><svg><use href="#i-screen"/></svg></button>
+        <button class="tb" type="button" id="captureTab" title="Record audio from any website: pick a browser tab and it’s saved to your library" aria-label="Record audio from a website"><svg><use href="#i-screen"/></svg><span class="tb-label">Record a website</span></button>
         <button class="tb" type="button" id="captureMic" title="Record with the microphone" aria-label="Record microphone"><svg><use href="#i-mic-red"/></svg></button>
       </div>
       <input id="fileInput" class="visually-hidden" type="file" multiple accept="audio/*,video/*,.flac,.m4a,.wav,.mp3,.aac,.ogg,.opus,.webm,.mp4,.mov,.qta">
