@@ -644,6 +644,7 @@
       <div class="about">
         <h4>Record audio from any website</h4>
         <p class="hint">Slow Down Buddy can record whatever a website is playing and save it straight to your library, ready to slow down, loop and transpose. On a computer, open the page with the music in another tab of Chrome, Edge or Brave (or another Chrome-based browser), press the screen button in the toolbar, choose that tab, switch on “Share tab audio”, and play the part you want. Press “Stop and add to library” when you’re done. The microphone button records anything you can play out loud, on any device.</p>
+        <p class="hint"><strong>On a phone or tablet</strong>, use its screen recorder, then open the video here: Slow Down Buddy keeps just the audio. iPhone and iPad: add Screen Recording in Settings → Control Center, swipe down to Control Center, tap the record button, play the song, then stop from the red indicator at the top; the video is saved in Photos. Android: pull down Quick Settings, tap Screen record and choose to record media or device audio. Then tap the folder button and pick the video (on iPhone, choose Photo Library). YouTube and most websites work; Spotify and Apple Music record silence on phones.</p>
       </div>
       <div class="soundcheck">
         <h4>Sound check</h4>
@@ -720,7 +721,7 @@
 </dialog>
 <div class="phone-tip" id="phoneTip" role="dialog" aria-label="Getting started" hidden>
   <p><strong>Try it:</strong> tap ▶ to play the demo, then tap <strong>50%</strong> to hear it slowed down without changing pitch. Tap <strong>Loop start</strong> and <strong>Loop end</strong> to loop a passage.</p>
-  <p class="hint">On a computer (Chrome, Edge or Brave) you can also record any browser tab, like YouTube or Spotify, straight into your library.</p>
+  <p class="hint"><strong>Record from any website or app:</strong> use your phone’s screen recorder (on iPhone, Screen Recording in Control Center), then open the video with the folder button. YouTube and most websites work; Spotify and Apple Music record silence.</p>
   <div class="row end"><button class="btn" type="button" id="phoneTipInstall" hidden>Add to Home Screen</button><button class="btn primary" type="button" id="phoneTipOk">Got it</button></div>
 </div>
 <div class="rec-help" id="recHelp" role="dialog" aria-label="Recording a website" hidden>
@@ -4061,7 +4062,7 @@ function wire() {
   if (!CAN_CAPTURE_TAB) {
     // Phones and tablets can't capture another tab: hide that button and point to the microphone instead.
     $('#captureTab').hidden = true;
-    $('#libraryHint').textContent = 'Open a file with the folder button, or play a song out loud and record it with the microphone button. Songs, loops and markers are kept in this browser.';
+    $('#libraryHint').textContent = 'Open a file with the folder button. To get a song from a website or app, screen-record it (on iPhone, Screen Recording in Control Center) and open the video here, or play it out loud and record it with the microphone button. Songs, loops and markers are kept in this browser.';
   }
   if (CAN_CAPTURE_TAB && !TAB_AUDIO_OK) {
     $('#captureTab').title = 'Record audio from a website: works in Chrome, Edge or Brave on a computer';
