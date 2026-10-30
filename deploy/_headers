@@ -2,3 +2,7 @@
   Permissions-Policy: microphone=(self), display-capture=(self)
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' https://slowdownbuddy.goatcounter.com; img-src 'self' data: blob: https://slowdownbuddy.goatcounter.com; media-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+/licenses/source/*
+  Content-Type: application/gzip

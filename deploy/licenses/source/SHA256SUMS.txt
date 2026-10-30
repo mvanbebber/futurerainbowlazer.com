@@ -1,0 +1,4 @@
+37cfcc258a77800d370b841e33cf19a18a3be6a990c0d1332ea3e01cb4ac4272  codec-parser-2.5.0.tgz
+da533b53ee80a0c98c58f2ea9e37221c21025145f0b0037def38ae1a31c3d5dc  opus-decoder-0.7.12.tgz
+052220a48a739f2de5419d35dd393ebd89b06ffa2b69f4e9cd6742bfd7c37070  wasm-audio-decoders-common-9.0.7.tgz
+4386c3bd38b0296211ef83bc350546e954b1c7deeb5802b1c12f016ecc81c678  wasm-audio-decoders-flac-0.2.11.tgz

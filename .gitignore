@@ -15,9 +15,9 @@ SlowDownBuddy.zip
 slowdownbuddy-netlify.zip
 
 # Stray downloads and scratch files (never part of the app)
-*.whl
-*.tar.gz
-*.tgz
+/*.whl
+/*.tar.gz
+/*.tgz
 /*.zip
 /*.png
 __pycache__/
