@@ -284,6 +284,9 @@
   dialog.sheet { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--window); color: var(--ink); box-shadow: 0 18px 50px rgba(0,0,0,0.3); }
   dialog.sheet::backdrop { background: rgba(0,0,0,0.35); }
   dialog.sheet h3 { margin: 0 0 6px; font-size: 17px; }
+  .install-steps { margin: 12px 0; padding-left: 1.3em; display: grid; gap: 10px; line-height: 1.4; }
+  .install-steps .btn { margin-top: 6px; }
+  .install-steps .share-ico { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.15em; }
   dialog.sheet form { display: grid; gap: 12px; }
   .field { display: grid; gap: 5px; font-weight: 600; font-size: 13px; border: 0; padding: 0; margin: 0; }
   .field legend { padding: 0; margin-bottom: 4px; }
@@ -580,6 +583,7 @@
             <button class="btn small" id="backupBtn" type="button">Back up library</button>
             <label class="btn small" for="restoreInput">Restore backup</label>
             <input id="restoreInput" class="visually-hidden" type="file" accept=".zip,application/zip">
+            <button class="btn small primary" id="installBtn" type="button" hidden>Add to Home Screen</button>
           </div>
         </div>
         <p class="hint pro-note">Pro is coming: export slowed-down MP3s, sync between devices, chord names. <button class="link" type="button" data-dialog="waitlist">Get early-bird pricing</button> · <button class="link" type="button" data-dialog="feedback">Send feedback</button></p>
@@ -693,10 +697,20 @@
     <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Join the waitlist</button></div>
   </form>
 </dialog>
+<dialog class="sheet" id="dlg-install" aria-labelledby="inTitle">
+  <h3 id="inTitle">Put Slow Down Buddy on your Home Screen</h3>
+  <p class="hint">It opens full screen like an app, and your library is safer there: Safari can clear a website’s data after 7 days without a visit, but not a Home Screen app’s.</p>
+  <ol class="install-steps">
+    <li id="inBackupStep"><strong>Back up your songs.</strong> The Home Screen app starts with its own empty library, so you’ll bring them over with this file.<br><button class="btn small" type="button" id="inBackup">Back up library</button></li>
+    <li id="inAddStep"></li>
+    <li id="inRestoreStep"><strong>Bring your songs over.</strong> Open Slow Down Buddy from your Home Screen, tap the Library button, then <strong>Restore backup</strong> and pick the backup file (in Files, under Downloads).</li>
+  </ol>
+  <div class="row end"><button class="btn primary" type="button" data-close>Done</button></div>
+</dialog>
 <div class="phone-tip" id="phoneTip" role="dialog" aria-label="Getting started" hidden>
   <p><strong>Try it:</strong> tap ▶ to play the demo, then tap <strong>50%</strong> to hear it slowed down without changing pitch. Tap <strong>Loop start</strong> and <strong>Loop end</strong> to loop a passage.</p>
   <p class="hint">On a computer (Chrome, Edge or Brave) you can also record any browser tab, like YouTube or Spotify, straight into your library.</p>
-  <button class="btn primary" type="button" id="phoneTipOk">Got it</button>
+  <div class="row end"><button class="btn" type="button" id="phoneTipInstall" hidden>Add to Home Screen</button><button class="btn primary" type="button" id="phoneTipOk">Got it</button></div>
 </div>
 <div class="rec-help" id="recHelp" role="dialog" aria-label="Recording a website" hidden>
   <button class="x" type="button" id="recHelpX" aria-label="Close">×</button>
@@ -3054,6 +3068,40 @@ function hideLoopTip() {
   try { localStorage.setItem(LOOP_TIP_KEY, '1'); } catch (e) { /* private mode */ }
 }
 
+// Add to Home Screen. Android Chrome can install with one tap (beforeinstallprompt); iPhone and iPad can't be asked by
+// a website, so the button opens steps for this browser, with a backup first because the Home Screen app keeps its
+// own library there.
+const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+let installPrompt = null;
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; showInstallButtons(); });
+addEventListener('appinstalled', () => { installPrompt = null; $('#installBtn').hidden = true; $('#phoneTipInstall').hidden = true; trackEvent('installed'); });
+function showInstallButtons() {
+  if (IS_STANDALONE || !(IS_PHONE || installPrompt)) return;
+  $('#installBtn').hidden = false;
+  $('#phoneTipInstall').hidden = false;
+}
+async function installApp() {
+  trackEvent('install-clicked');
+  if (installPrompt) {
+    const p = installPrompt; installPrompt = null;
+    p.prompt();
+    try { await p.userChoice; } catch (e) { /* dismissed */ }
+    return;
+  }
+  const ua = navigator.userAgent;
+  const share = '<svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l4 4-1.4 1.4L13 6.8V15h-2V6.8L9.4 8.4 8 7z M5 10h4v2H7v8h10v-8h-2v-2h4v12H5z" fill="currentColor"/></svg>';
+  let add;
+  if (IS_IOS && /CriOS/.test(ua)) add = '<strong>Add it.</strong> Tap the Share button ' + share + ' in the address bar, then <strong>Add to Home Screen</strong>, then <strong>Add</strong>.';
+  else if (IS_IOS && /FxiOS|EdgiOS/.test(ua)) add = '<strong>Add it.</strong> Open the browser menu, tap Share ' + share + ', then <strong>Add to Home Screen</strong>. If you don’t see it, open slowdownbuddy.com in Safari and do it there.';
+  else if (IS_IOS) add = '<strong>Add it.</strong> Tap the Share button ' + share + ' (at the bottom of the screen, or in the ⋯ menu), scroll down, tap <strong>Add to Home Screen</strong>, keep <strong>Open as Web App</strong> on, then tap <strong>Add</strong>.';
+  else add = '<strong>Add it.</strong> Open the browser menu (⋮) and tap <strong>Add to Home screen</strong> or <strong>Install app</strong>.';
+  $('#inAddStep').innerHTML = add;
+  // Only iPhone/iPad keep a separate library for the Home Screen app, and only songs need bringing over.
+  const hasSongs = songs.some((s) => s.source !== 'example');
+  $('#inBackupStep').hidden = $('#inRestoreStep').hidden = !(IS_IOS && hasSongs);
+  openDialog('install');
+}
+
 async function startCapture(kind) {
   if (rec.recorder) return;
   if (!window.MediaRecorder || !navigator.mediaDevices) { toast('This browser can’t record audio. Use Chrome, Edge, Brave or Firefox on a computer.', 7000); return; }
@@ -3519,7 +3567,8 @@ function wire() {
   document.querySelectorAll('[data-dialog]').forEach((b) => b.addEventListener('click', () => openDialog(b.dataset.dialog)));
   document.querySelectorAll('dialog.sheet').forEach((dlg) => {
     dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
-    dlg.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); submitDialogForm(e.target); });
+    const form = dlg.querySelector('form');
+    if (form) form.addEventListener('submit', (e) => { e.preventDefault(); submitDialogForm(e.target); });
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
   });
   $('#restoreInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreBackup(f); });
@@ -3528,6 +3577,9 @@ function wire() {
   $('#recHelpMic').addEventListener('click', () => { hideRecHelp(); startCapture('mic'); });
   $('#recHelp label').addEventListener('click', hideRecHelp);
   $('#loopTipX').addEventListener('click', hideLoopTip);
+  $('#installBtn').addEventListener('click', installApp);
+  $('#phoneTipInstall').addEventListener('click', () => { $('#phoneTipOk').click(); installApp(); });
+  $('#inBackup').addEventListener('click', backupLibrary);
   // The picker lists only formats the app can read; AIFF joins the list in browsers that decode it (Safari).
   if (new Audio().canPlayType('audio/aiff')) $('#fileInput').accept += ',.aif,.aiff,audio/aiff,audio/x-aiff';
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#recHelp').hidden) hideRecHelp(); });
@@ -3993,6 +4045,8 @@ function wire() {
     $('#captureTab').title = 'Record audio from a website: works in Chrome, Edge or Brave on a computer';
     $('#libraryHint').textContent = 'Open files with the folder button or drop them anywhere on the page. Recording a website works in Chrome, Edge or Brave on a computer; here you can record with the microphone button. Songs, loops and markers are kept in this browser.';
   }
+  showInstallButtons();
+  if (IS_STANDALONE && IS_IOS && !stored.length) $('#libraryHint').textContent += ' Moved here from Safari or Chrome? Tap Restore backup to bring your songs over.';
   let loopTipSeen = true;
   try { loopTipSeen = !!localStorage.getItem(LOOP_TIP_KEY); } catch (e) { /* private mode: skip the tip */ }
   if (!IS_PHONE && matchMedia('(pointer: fine)').matches && !loopTipSeen) $('#loopTip').hidden = false;
