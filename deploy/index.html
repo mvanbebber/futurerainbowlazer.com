@@ -2725,10 +2725,12 @@ function drawRuler(now) {
   const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
   const step = steps.find((s) => view.span / s <= W / (95 * dpr)) || 600;
   const numY = (compact ? 13 : 17) * dpr;
-  // The song's length, always at the right end of the time row; tick labels that would run into it are skipped.
+  // The song's length at the right end of the time row, only while the whole song is in view; tick labels that
+  // would run into it are skipped.
+  const whole = view.start <= 0.01 && view.start + view.span >= engine.duration - 0.01;
   g.font = '700 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
   const lenText = shortClock(engine.duration), lenW = g.measureText(lenText).width;
-  const lenLeft = W - lenW - 9 * dpr;
+  const lenLeft = whole ? W - lenW - 9 * dpr : Infinity;
   g.font = '500 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
   g.textBaseline = 'alphabetic';
   for (let t = Math.ceil(view.start / step) * step; t <= view.start + view.span; t += step) {
@@ -2740,13 +2742,15 @@ function drawRuler(now) {
     g.fillStyle = '#666';
     g.fillText(label, tx + 4 * dpr, numY);
   }
-  g.font = '700 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
-  const fs = (compact ? 11 : 13) * dpr;
-  g.fillStyle = '#e4e4e4';
-  const bx = lenLeft - 5 * dpr, by = numY - fs, bw = lenW + 10 * dpr, bh = fs + 4 * dpr;
-  if (g.roundRect) { g.beginPath(); g.roundRect(bx, by, bw, bh, 4 * dpr); g.fill(); } else g.fillRect(bx, by, bw, bh); // older Safari
-  g.fillStyle = '#333';
-  g.fillText(lenText, lenLeft, numY);
+  if (whole) {
+    g.font = '700 ' + ((compact ? 11 : 13) * dpr) + 'px ' + C.num;
+    const fs = (compact ? 11 : 13) * dpr;
+    g.fillStyle = '#e4e4e4';
+    const bx = lenLeft - 5 * dpr, by = numY - fs, bw = lenW + 10 * dpr, bh = fs + 4 * dpr;
+    if (g.roundRect) { g.beginPath(); g.roundRect(bx, by, bw, bh, 4 * dpr); g.fill(); } else g.fillRect(bx, by, bw, bh); // older Safari
+    g.fillStyle = '#333';
+    g.fillText(lenText, lenLeft, numY);
+  }
 
   // markers on top
   for (const f of flags) {
