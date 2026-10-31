@@ -703,11 +703,11 @@
     <label class="field">Email<input class="text-input" type="email" name="email" required autocomplete="email"></label>
     <fieldset class="field"><legend>Most wanted (pick any)</legend>
       <label><input type="checkbox" name="want" value="export"> Export slowed-down or transposed audio (MP3/WAV)</label>
-      <label><input type="checkbox" name="want" value="sync"> Sync my library between phone and computer</label>
+      <label><input type="checkbox" name="want" value="sync"> Sync my library between phone and computer (through your own Google Drive or Dropbox)</label>
       <label><input type="checkbox" name="want" value="chords"> Chord names on the waveform</label>
       <label><input type="checkbox" name="want" value="bars"> Automatic bar and beat markers</label>
       <label><input type="checkbox" name="want" value="stems"> Separate vocals, bass, drums</label>
-      <label><input type="checkbox" name="want" value="youtube"> Practice YouTube videos by pasting a link</label>
+      <label><input type="checkbox" name="want" value="offline"> Offline mode: use the app with no internet connection</label>
     </fieldset>
     <label class="field">Anything else?<input class="text-input" type="text" name="other" maxlength="500"></label>
     <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Join the waitlist</button></div>
@@ -2302,6 +2302,16 @@ async function decode(arrayBuffer) {
   }
 }
 
+// Mic recordings from a mono microphone (or a browser that records one) can come out as stereo with a silent right
+// channel: they played from the left speaker only and showed one waveform. Copy the recorded side into the silent one.
+function fillSilentChannel(buffer) {
+  if (buffer.numberOfChannels !== 2) return;
+  const level = (d) => { let s = 0; for (let i = 0; i < d.length; i += 16) s += d[i] * d[i]; return s; };
+  const l = buffer.getChannelData(0), r = buffer.getChannelData(1), ll = level(l), rl = level(r);
+  if (rl < ll * 1e-4) r.set(l);
+  else if (ll < rl * 1e-4) l.set(r);
+}
+
 async function importBlob(original, title, source) {
   $('#waveBusy').hidden = false;
   try {
@@ -2310,6 +2320,7 @@ async function importBlob(original, title, source) {
     const bytes = await original.arrayBuffer();
     const blob = new Blob([bytes], { type: original.type || '' });
     const buffer = await decode(bytes);
+    if (source === 'mic') fillSilentChannel(buffer);
     // A song whose saved audio was lost gets it back when the same file is opened again (loops and markers kept).
     const lost = songs.find((s) => s.audioLost && s.title === title);
     if (lost) {
@@ -2369,6 +2380,7 @@ async function selectSong(id) {
       const fromPickedFile = typeof File !== 'undefined' && blob instanceof File;
       // It decoded fine when it was imported, so a failure now means the saved copy was damaged or deleted.
       try { buffer = await decode(fromPickedFile ? bytes.slice(0) : bytes); } catch (e) { throw new Error('lost'); }
+      if (song.source === 'mic') fillSilentChannel(buffer);
       // Songs saved by older versions point at the picked file; replace that with a real copy while it still reads.
       if (fromPickedFile) Store.putAudio(id, new Blob([bytes], { type: blob.type || '' }));
       buffers.set(id, buffer);
@@ -3160,7 +3172,7 @@ async function startCapture(kind) {
       }
     } else {
       micSessionOn(true);
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 } } });
     }
   } catch (e) {
     if (micSession) micSessionOn(false);
